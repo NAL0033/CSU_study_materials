@@ -1,0 +1,17 @@
+*.zip
+*.ipch
+*.pptx
+*.exe
+*.obj
+*.o
+*.ko
+*.mod
+*.mod.c
+*.order
+*.symvers
+node_modules/
+.vs/
+.vscode/
+.claude/
+.ipch/
+__pycache__/

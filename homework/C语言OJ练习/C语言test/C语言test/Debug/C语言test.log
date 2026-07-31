@@ -1,0 +1,5 @@
+﻿  test.c
+D:\作业\C语言OJ练习\C语言test\test.c(67,11): error C2057: 应输入常量表达式
+D:\作业\C语言OJ练习\C语言test\test.c(67,11): error C2466: 不能分配常量大小为 0 的数组
+D:\作业\C语言OJ练习\C语言test\test.c(67,7): error C2133: “arr”: 未知的大小
+D:\作业\C语言OJ练习\C语言test\test.c(64,12): error C1075: “{”: 未找到匹配令牌

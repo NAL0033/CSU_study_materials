@@ -1,0 +1,91 @@
+产生式
+1	E	E+T
+2	E	T
+3	T	T*F
+4	T	F
+5	F	(E)
+6	F	i
+
+终结符
+#	^	+	*	(	)	i	
+
+非终结符
+E	T	F	
+读取测试
+(i)*i
+(i)*iii
+
+
+消除左递归
+
+
+产生式
+1	E	Te
+2	T	Ft
+3	F	(E)
+4	F	i
+5	e	+Te
+6	e	^
+7	t	*Ft
+8	t	^
+
+终结符
+#	^	+	*	(	)	i	
+
+非终结符
+E	T	F	e	t	
+读取测试
+(i)*i
+(i)*iii
+
+
+求FIRST集
+
+E	first number=2	first=(i
+T	first number=2	first=(i
+F	first number=2	first=(i
+e	first number=2	first=+^
+t	first number=2	first=*^
+
+
+求FOLLOW集
+
+E	follow number=2	follow=#)
+T	follow number=3	follow=+#)
+F	follow number=4	follow=*+#)
+e	follow number=2	follow=#)
+t	follow number=3	follow=+#)
+
+
+预测分析表
+
+ 	#	^	+	*	(	)	i	
+E	 	 	 	 	1	 	1	
+T	 	 	 	 	2	 	2	
+F	 	 	 	 	3	 	4	
+e	6	 	5	 	 	6	 	
+t	8	 	8	7	 	8	 	
+
+
+
+分析栈	#E	剩余字符串	(i)*i#
+分析栈	#eT	剩余字符串	(i)*i#
+分析栈	#etF	剩余字符串	(i)*i#
+分析栈	#et)E(	剩余字符串	(i)*i#
+分析栈	#et)E	剩余字符串	i)*i#
+分析栈	#et)eT	剩余字符串	i)*i#
+分析栈	#et)etF	剩余字符串	i)*i#
+分析栈	#et)eti	剩余字符串	i)*i#
+分析栈	#et)et	剩余字符串	)*i#
+分析栈	#et)e	剩余字符串	)*i#
+分析栈	#et)	剩余字符串	)*i#
+分析栈	#et	剩余字符串	*i#
+分析栈	#etF*	剩余字符串	*i#
+分析栈	#etF	剩余字符串	i#
+分析栈	#eti	剩余字符串	i#
+分析栈	#et	剩余字符串	#
+分析栈	#e	剩余字符串	#
+分析栈	#	剩余字符串	#
+
+合法输入
+退出成功

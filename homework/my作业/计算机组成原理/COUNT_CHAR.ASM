@@ -1,0 +1,74 @@
+DATA SEGMENT
+    BUF DB 80
+        DB ?
+        DB 80 DUP('$')
+
+    DIGIT Dw 0
+    LETTER Dw 0
+    OTHER Dw 0
+
+    MSG DB 0DH,0AH,'Enter a string (max 80 chars): $'
+DATA ENDS
+
+STACK SEGMENT
+    DB 100 DUP(?)
+STACK ENDS
+
+CODE SEGMENT
+    ASSUME CS:CODE, DS:DATA, SS:STACK
+
+    START:
+    MOV AX,DATA
+    MOV DS,AX
+
+    MOV DX,OFFSET MSG
+    MOV AH,09h
+    INT 21h
+
+    MOV DX,OFFSET BUF
+    MOV AH,0AH
+    INT 21h
+
+    MOV CL,[BUF+1]
+    XOR CH,CH
+
+    LEA SI,BUF+2
+
+NEXT_CHAR:
+    CMP CX,0
+    JE DONE
+    MOV AL,[SI]
+    CMP AL,'0'
+    JB CHECK_LETTER
+    CMP AL,'9'
+    JA CHECK_LETTER
+    INC DIGIT
+    JMP NEXT_STEP
+
+CHECK_LETTER:
+    CMP AL,'A'
+    JB CHECK_OTHER
+    CMP AL,'Z'
+    JBE IS_LETTER
+
+    CMP AL,'a'
+    JB CHECK_OTHER
+    CMP AL,'z'
+    JA CHECK_OTHER
+
+IS_LETTER:
+    INC LETTER
+    JMP NEXT_STEP
+CHECK_OTHER:
+    INC OTHER
+
+NEXT_STEP:
+    INC SI
+    DEC CX
+    JMP NEXT_CHAR
+DONE:
+    MOV AH,4CH
+    INT 21h
+
+CODE ENDS
+END START

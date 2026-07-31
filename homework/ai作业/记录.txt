@@ -1,0 +1,5205 @@
+
+你说：
+2.1 手写数字识别任务
+数字识别是计算机从纸质文档、照片或其他来源接收、理解并识别可读的数字的能力，目前比较受关注的是手写数字识别。手写数字识别是一个典型的图像分类问题，已经被广泛应用于汇款单号识别、手写邮政编码识别等领域，大大缩短了业务处理时间，提升了工作效率和质量。
+
+在处理如 图1 所示的手写邮政编码的简单图像分类任务时，可以使用基于MNIST数据集的手写数字识别模型。MNIST是深度学习领域标准、易用的成熟数据集，包含50 000条训练样本和10 000条测试样本。
+
+
+
+图1：手写数字识别任务示意图
+任务输入：一系列手写数字图片，其中每张图片都是28x28的像素矩阵。
+任务输出：经过了大小归一化和居中处理，输出对应的0~9的数字标签。
+延伸阅读：
+
+MNIST数据集是从NIST的Special Database 3（SD-3）和Special Database 1（SD-1）构建而来。Yann LeCun等人从SD-1和SD-3中各取一半数据作为MNIST训练集和测试集，其中训练集来自250位不同的标注员，且训练集和测试集的标注员完全不同。
+
+MNIST数据集的发布，吸引了大量科学家训练模型。1998年，LeCun分别用单层线性分类器、多层感知器（Multilayer Perceptron, MLP）和多层卷积神经网络LeNet进行实验，使得测试集的误差不断下降（从12%下降到0.7%）。在研究过程中，LeCun提出了卷积神经网络（Convolutional Neural Network，CNN），大幅度地提高了手写字符的识别能力，也因此成为了深度学习领域的奠基人之一。
+
+如今在深度学习领域，卷积神经网络占据了至关重要的地位，从最早LeCun提出的简单LeNet，到如今ImageNet大赛上的优胜模型VGGNet、GoogLeNet、ResNet等，人们在图像分类领域，利用卷积神经网络得到了一系列惊人的结果。
+
+手写数字识别的模型是深度学习中相对简单的模型，非常适用初学者。正如学习编程时，我们输入的第一个程序是打印“Hello World！”一样。 在飞桨的入门教程中，我们选取了手写数字识别模型作为启蒙教材，以便更好的帮助读者快速掌握飞桨平台的使用。
+
+2.1.1 使用飞桨完成手写数字识别任务的流程
+使用飞桨完成手写数字识别任务的流程如 图2 所示，与使用飞桨完成房价预测模型任务的流程一致，下面的章节中我们将详细介绍每个步骤的具体实现方法和优化思路。
+
+
+
+
+图2：使用飞桨完成手写数字识别任务的流程
+
+
+2.1.2 飞桨各模型代码结构一致，大大降低了用户的编码难度
+在探讨手写数字识别任务的实现方案之前，我们先“偷偷地看”一下程序代码。不难发现，与上一章学习的房价预测任务的代码比较，二者的程序结构是极为相似的，如 图3 所示。
+
+
+
+
+图3：房价预测和手写数字识别的实现代码“神似”
+
+
+从代码结构上看，模型均为数据处理、定义网络结构和训练过程三个部分。
+
+从代码细节来看，两个模型也很相似。
+
+这就是使用飞桨框架搭建深度学习模型的优势，只要完成一个模型的案例学习，其它任务即可触类旁通。在工业实践中，程序员用飞桨框架搭建模型，无需每次都另起炉灶，多数情况是先在飞桨模型库中寻找与目标任务类似的模型，再在该模型的基础上修改少量代码即可完成新的任务。
+
+2.1.3 教程采用"横纵式"教学法，适用于深度学习初学者
+在本教程中，我们采用了专门为读者设计的创新性的“横纵式”教学法进行深度学习建模介绍，如 图4 所示。
+
+
+
+图4：创新性的“横纵式”教学法
+
+
+在“横纵式”教学法中，纵向概要介绍模型的基本代码结构和极简实现方案。横向深入探讨构建模型的每个环节中，更优但相对复杂的实现方案。例如在模型设计环节，除了在极简版本使用的单层神经网络（与房价预测模型一样）外，还可以尝试更复杂的网络结构，如多层神经网络、加入非线性的激活函数，甚至专门针对视觉任务优化的卷积神经网络。
+
+这种“横纵式”教学法的设计思路尤其适用于深度学习的初学者，具有如下两点优势：
+
+帮助读者轻松掌握深度学习内容：采用这种方式设计教学案例，读者在学习过程中接收到的信息是线性增长的，在难度上不会有阶跃式的提高。
+模拟真实建模的实战体验：先使用熟悉的模型构建一个可用但不够出色的基础版本（Baseline），再逐渐分析每个建模环节可优化的点，一点点的提升优化效果，让读者获得真实建模的实战体验。
+相信在本章结束时，大家将会对深入实践深度学习建模有一个更全面的认识，接下来我们将逐步学习建模的方法。2.2 通过极简方案实现数字识别任务
+上一节介绍了创新性的“横纵式”教学法，有助于深度学习初学者快速掌握深度学习理论知识，并在过程中让读者获得真实建模的实战体验。在“横纵式”教学法中，纵向概要介绍模型的基本代码结构和极简实现方案，如 图1 所示。本节将使用这种极简实现方案快速完成手写数字识别的建模。
+
+
+
+图1：“横纵式”教学法—纵向极简实现方案
+
+
+在数据处理前，首先要加载飞桨平台与“手写数字识别”模型相关的类库，实现方法如下。
+
+In [1]
+#加载飞桨和相关类库
+import paddle
+from paddle.nn import Linear
+import paddle.nn.functional as F
+import os
+import numpy as np
+import matplotlib.pyplot as plt
+2.2.1 数据处理
+飞桨提供了多个封装好的数据集API，涵盖计算机视觉、自然语言处理、推荐系统等多个领域，帮助读者快速完成深度学习任务。如在手写数字识别任务中，通过paddle.vision.datasets.MNIST可以直接获取处理好的MNIST训练集、测试集，飞桨API支持如下常见的学术数据集：
+
+mnist
+cifar
+Conll05
+imdb
+imikolov
+movielens
+sentiment
+uci_housing
+wmt14
+wmt16
+通过paddle.vision.datasets.MNIST API设置数据读取器，代码如下所示。
+
+In [2]
+# 设置数据读取器，API自动读取MNIST数据训练集
+train_dataset = paddle.vision.datasets.MNIST(mode='train')
+通过如下代码读取任意一个数据内容，观察打印结果。
+
+In [3]
+train_data_0 = np.array(train_dataset[0][0])
+train_label_0 = np.array(train_dataset[0][1])
+
+# 显示第一batch的第一个图像
+import matplotlib.pyplot as plt
+plt.figure("Image") # 图像窗口名称
+plt.figure(figsize=(2,2))
+plt.imshow(train_data_0, cmap=plt.cm.binary)
+plt.axis('on') # 关掉坐标轴为 off
+plt.title('image') # 图像题目
+plt.show()
+
+print("图像数据形状和对应数据为:", train_data_0.shape)
+print("图像标签形状和对应数据为:", train_label_0.shape, train_label_0)
+print("\n打印第一个batch的第一个图像，对应标签数字为{}".format(train_label_0))
+/opt/conda/envs/python35-paddle120-env/lib/python3.7/site-packages/matplotlib/cbook/__init__.py:2349: DeprecationWarning: Using or importing the ABCs from 'collections' instead of from 'collections.abc' is deprecated, and in 3.8 it will stop working
+  if isinstance(obj, collections.Iterator):
+/opt/conda/envs/python35-paddle120-env/lib/python3.7/site-packages/matplotlib/cbook/__init__.py:2366: DeprecationWarning: Using or importing the ABCs from 'collections' instead of from 'collections.abc' is deprecated, and in 3.8 it will stop working
+  return list(data) if isinstance(data, collections.MappingView) else data
+/opt/conda/envs/python35-paddle120-env/lib/python3.7/site-packages/matplotlib/image.py:425: DeprecationWarning: np.asscalar(a) is deprecated since NumPy v1.16, use a.item() instead
+  a_min = np.asscalar(a_min.astype(scaled_dtype))
+/opt/conda/envs/python35-paddle120-env/lib/python3.7/site-packages/matplotlib/image.py:426: DeprecationWarning: np.asscalar(a) is deprecated since NumPy v1.16, use a.item() instead
+  a_max = np.asscalar(a_max.astype(scaled_dtype))
+<Figure size 432x288 with 0 Axes>
+
+<Figure size 144x144 with 1 Axes>
+图像数据形状和对应数据为: (28, 28)
+图像标签形状和对应数据为: (1,) [5]
+
+打印第一个batch的第一个图像，对应标签数字为[5]
+使用matplotlib工具包将其显示出来，如打印结果所示。可以看到图片显示的数字是5，和对应标签数字一致。
+
+说明：
+
+飞桨将维度是28×28的手写数字图像转成向量形式存储，因此使用飞桨数据加载器读取到的手写数字图像是长度为784（28×28）的向量。
+
+飞桨API介绍
+
+熟练掌握飞桨API的使用方法，是使用飞桨完成各类深度学习任务的基础，也是开发者必须掌握的技能。登录“飞桨官网->文档”，可以获取飞桨API文档。在飞桨最新的版本中，对API做了许多优化，目录结构与说明，如 图2 所示。
+
+
+
+图2：飞桨API文档目录
+
+
+飞桨每个API的文档结构一致，包含接口形式、功能说明和计算公式、参数和返回值、代码示例四个部分。 以Relu函数为例，API文档结构如 图3 所示。通过飞桨API文档，读者不仅可以详细查看函数功能，还可以通过可运行的代码示例来实践API的使用。
+
+
+
+图3：Relu的API文档
+
+
+2.2.2 模型设计
+在房价预测深度学习任务中，我们使用了单层且没有非线性变换的模型，取得了理想的预测效果。在手写数字识别中，我们依然使用这个模型预测输入的图形数字值。其中，模型的输入为784维（
+28
+×
+28
+28×28）数据，输出为1维数据，如 图4 所示。
+
+
+
+图4：手写数字识别网络模型
+
+
+输入像素的位置排布信息对理解图像内容非常重要（如将原始尺寸为
+28
+×
+28
+28×28图像的像素按照
+7
+×
+112
+7×112的尺寸排布，那么其中的数字将不可识别），因此网络的输入设计为
+28
+×
+28
+28×28的尺寸，而不是
+1
+×
+784
+1×784，以便于模型能够正确处理像素之间的空间信息。
+
+说明：
+
+事实上，采用只有一层的简单网络（对输入求加权和）时并没有处理位置关系信息，因此可以猜测出此模型的预测效果可能有限。在后续优化环节介绍的卷积神经网络则更好的考虑了这种位置关系信息，模型的预测效果也会有显著提升。
+
+下面以类的方式组建手写数字识别的网络，实现方法如下所示。
+
+In [4]
+# 定义mnist数据识别网络结构，同房价预测网络
+class MNIST(paddle.nn.Layer):
+    def __init__(self):
+        super(MNIST, self).__init__()
+        
+        # 定义一层全连接层，输出维度是1
+        self.fc = paddle.nn.Linear(in_features=784, out_features=1)
+        
+    # 定义网络结构的前向计算过程
+    def forward(self, inputs):
+        outputs = self.fc(inputs)
+        return outputs
+2.2.3 训练配置
+训练配置需要先生成模型实例（设为“训练”状态），再设置优化算法和学习率（使用随机梯度下降，学习率设置为0.001），实现方法如下所示。
+
+In [5]
+# 声明网络结构
+model = MNIST()
+
+def train(model):
+    # 启动训练模式
+    model.train()
+    # 加载训练集 batch_size 设为 16
+    train_loader = paddle.io.DataLoader(paddle.vision.datasets.MNIST(mode='train'), 
+                                        batch_size=16, 
+                                        shuffle=True)
+    # 定义优化器，使用随机梯度下降SGD优化器，学习率设置为0.001
+    opt = paddle.optimizer.SGD(learning_rate=0.001, parameters=model.parameters())
+2.2.4 训练过程
+训练过程采用二层循环嵌套方式，训练完成后需要保存模型参数，以便后续使用。
+
+内层循环：负责整个数据集的一次遍历，遍历数据集采用分批次（batch）方式。
+外层循环：定义遍历数据集的次数，本次训练中外层循环10次，通过参数EPOCH_NUM设置。
+In [6]
+# 图像归一化函数，将数据范围为[0, 255]的图像归一化到[0, 1]
+def norm_img(img):
+    # 验证传入数据格式是否正确，img的shape为[batch_size, 28, 28]
+    assert len(img.shape) == 3
+    batch_size, img_h, img_w = img.shape[0], img.shape[1], img.shape[2]
+    # 归一化图像数据
+    img = img / 255
+    # 将图像形式reshape为[batch_size, 784]
+    img = paddle.reshape(img, [batch_size, img_h*img_w])
+    
+    return img
+In [7]
+import paddle
+# 确保从paddle.vision.datasets.MNIST中加载的图像数据是np.ndarray类型
+paddle.vision.set_image_backend('cv2')
+
+# 声明网络结构
+model = MNIST()
+
+def train(model):
+    # 启动训练模式
+    model.train()
+    # 加载训练集 batch_size 设为 16
+    train_loader = paddle.io.DataLoader(paddle.vision.datasets.MNIST(mode='train'), 
+                                        batch_size=16, 
+                                        shuffle=True)
+    # 定义优化器，使用随机梯度下降SGD优化器，学习率设置为0.001
+    opt = paddle.optimizer.SGD(learning_rate=0.001, parameters=model.parameters())
+    EPOCH_NUM = 10
+    loss_list = []
+    for epoch in range(EPOCH_NUM):
+        for batch_id, data in enumerate(train_loader()):
+            images = norm_img(data[0]).astype('float32')
+            labels = data[1].astype('float32')
+            
+            #前向计算的过程
+            predicts = model(images)
+            
+            # 计算损失
+            loss = F.square_error_cost(predicts, labels)
+            avg_loss = paddle.mean(loss)
+            
+            #每训练了1000批次的数据，打印下当前Loss的情况
+            if batch_id % 1000 == 0:
+                loss = avg_loss.numpy()[0]
+                loss_list.append(loss)
+                print("epoch_id: {}, batch_id: {}, loss is: {}".format(epoch, batch_id, loss))
+            
+            #后向传播，更新参数的过程
+            avg_loss.backward()
+            opt.step()
+            opt.clear_grad()
+    
+    return loss_list
+            
+loss_list = train(model)
+paddle.save(model.state_dict(), './mnist.pdparams')
+epoch_id: 0, batch_id: 0, loss is: 24.697032928466797
+epoch_id: 0, batch_id: 1000, loss is: 3.6126604080200195
+epoch_id: 0, batch_id: 2000, loss is: 4.668757438659668
+epoch_id: 0, batch_id: 3000, loss is: 7.835882186889648
+epoch_id: 1, batch_id: 0, loss is: 3.9213480949401855
+epoch_id: 1, batch_id: 1000, loss is: 3.5855417251586914
+epoch_id: 1, batch_id: 2000, loss is: 9.574305534362793
+epoch_id: 1, batch_id: 3000, loss is: 3.497471809387207
+epoch_id: 2, batch_id: 0, loss is: 1.700231671333313
+epoch_id: 2, batch_id: 1000, loss is: 5.659431457519531
+epoch_id: 2, batch_id: 2000, loss is: 3.121914863586426
+epoch_id: 2, batch_id: 3000, loss is: 2.236569881439209
+epoch_id: 3, batch_id: 0, loss is: 4.225893497467041
+epoch_id: 3, batch_id: 1000, loss is: 2.8106493949890137
+epoch_id: 3, batch_id: 2000, loss is: 3.7676305770874023
+epoch_id: 3, batch_id: 3000, loss is: 1.8860180377960205
+epoch_id: 4, batch_id: 0, loss is: 3.8115546703338623
+epoch_id: 4, batch_id: 1000, loss is: 3.2085633277893066
+epoch_id: 4, batch_id: 2000, loss is: 3.4040653705596924
+epoch_id: 4, batch_id: 3000, loss is: 1.9389119148254395
+epoch_id: 5, batch_id: 0, loss is: 2.6248297691345215
+epoch_id: 5, batch_id: 1000, loss is: 3.9759254455566406
+epoch_id: 5, batch_id: 2000, loss is: 3.726135730743408
+epoch_id: 5, batch_id: 3000, loss is: 3.4035208225250244
+epoch_id: 6, batch_id: 0, loss is: 1.7333182096481323
+epoch_id: 6, batch_id: 1000, loss is: 4.5224995613098145
+epoch_id: 6, batch_id: 2000, loss is: 5.982969760894775
+epoch_id: 6, batch_id: 3000, loss is: 2.5600149631500244
+epoch_id: 7, batch_id: 0, loss is: 1.5843336582183838
+epoch_id: 7, batch_id: 1000, loss is: 2.116034984588623
+epoch_id: 7, batch_id: 2000, loss is: 3.7258358001708984
+epoch_id: 7, batch_id: 3000, loss is: 3.8359148502349854
+epoch_id: 8, batch_id: 0, loss is: 3.4599270820617676
+epoch_id: 8, batch_id: 1000, loss is: 4.112582206726074
+epoch_id: 8, batch_id: 2000, loss is: 2.8170323371887207
+epoch_id: 8, batch_id: 3000, loss is: 6.655948638916016
+epoch_id: 9, batch_id: 0, loss is: 3.2217535972595215
+epoch_id: 9, batch_id: 1000, loss is: 2.9060609340667725
+epoch_id: 9, batch_id: 2000, loss is: 4.96788215637207
+epoch_id: 9, batch_id: 3000, loss is: 2.846614122390747
+绘制损失函数变化曲线：
+
+In [8]
+def plot(loss_list):
+    plt.figure(figsize=(10,5))
+    
+    freqs = [i for i in range(len(loss_list))]
+    # 绘制训练损失变化曲线
+    plt.plot(freqs, loss_list, color='#e4007f', label="Train loss")
+    
+    # 绘制坐标轴和图例
+    plt.ylabel("loss", fontsize='large')
+    plt.xlabel("freq", fontsize='large')
+    plt.legend(loc='upper right', fontsize='x-large')
+    
+    plt.show()
+
+plot(loss_list)
+
+<Figure size 720x360 with 1 Axes>
+另外，从训练过程中损失所发生的变化可以发现，虽然损失整体上在降低，但到训练的最后一轮，损失函数值依然较高。可以猜测手写数字识别完全复用房价预测的代码，训练效果并不好。接下来我们通过模型测试，获取模型训练的真实效果。
+
+2.2.5 模型测试
+模型测试的主要目的是验证训练好的模型是否能正确识别出数字，包括如下四步：
+
+声明实例。
+加载模型：加载训练过程中保存的模型参数。
+灌入数据：将测试样本传入模型，模型的状态设置为校验状态（eval），显式告诉框架我们接下来只会使用前向计算的流程，不会计算梯度和梯度反向传播。
+获取预测结果，取整后作为预测标签输出。
+在模型测试之前，需要先从'./work/example_0.png'文件中读取样例图片，并进行归一化处理。
+
+In [9]
+# 导入图像读取第三方库
+import matplotlib.pyplot as plt
+import numpy as np
+from PIL import Image
+
+img_path = './work/example_0.jpg'
+# 读取原始图像并显示
+im = Image.open('./work/example_0.jpg')
+plt.imshow(im)
+plt.show()
+# 将原始图像转为灰度图
+im = im.convert('L')
+print('原始图像shape: ', np.array(im).shape)
+# 使用Image.ANTIALIAS方式采样原始图片
+im = im.resize((28, 28), Image.ANTIALIAS)
+plt.imshow(im)
+plt.show()
+print("采样后图片shape: ", np.array(im).shape)
+
+<Figure size 432x288 with 1 Axes>
+原始图像shape:  (28, 28)
+
+<Figure size 432x288 with 1 Axes>
+采样后图片shape:  (28, 28)
+In [10]
+# 读取一张本地的样例图片，转变成模型输入的格式
+def load_image(img_path):
+    # 从img_path中读取图像，并转为灰度图
+    im = Image.open(img_path).convert('L')
+    # print(np.array(im))
+    im = im.resize((28, 28), Image.ANTIALIAS)
+    im = np.array(im).reshape(1, -1).astype(np.float32)
+    # 图像归一化，保持和数据集的数据范围一致
+    im = 1 - im / 255
+    return im
+
+# 定义预测过程
+model = MNIST()
+params_file_path = 'mnist.pdparams'
+img_path = './work/example_0.jpg'
+# 加载模型参数
+param_dict = paddle.load(params_file_path)
+model.load_dict(param_dict)
+# 灌入数据
+model.eval()
+tensor_img = load_image(img_path)
+result = model(paddle.to_tensor(tensor_img))
+print('result',result)
+#  预测输出取整，即为预测的数字，打印结果
+print("本次预测的数字是", result.numpy().astype('int32'))
+result Tensor(shape=[1, 1], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
+       [[1.11141968]])
+本次预测的数字是 [[1]]
+从打印结果来看，模型预测出的数字是与实际输出的图片的数字不一致。这里只是验证了一个样本的情况，如果我们尝试更多的样本，可发现许多数字图片识别结果是错误的。因此完全复用房价预测的实验并不适用于手写数字识别任务！
+
+接下来我们会对手写数字识别实验模型进行逐一改进，直到获得令人满意的结果。
+
+作业 2-1：
+使用飞桨API paddle.vision.datasets.MNIST的mode函数获得测试集数据，计算当前模型的准确率。
+
+怎样进一步提高模型的准确率？可以在接下来内容开始前，写出你想到的优化思路。2.3 手写数字识别之数据处理
+第2.2节我们使用“横纵式”教学法中的纵向极简方案快速完成手写数字识别任务的建模，但模型测试效果并未达成预期。我们换个思路，从横向展开，如 图1 所示，逐个环节优化，以达到最优训练效果。本节主要介绍手写数字识别模型中，数据处理的优化方法。
+
+
+
+图1：“横纵式”教学法 — 数据处理优化
+
+
+第2.2节我们通过调用飞桨提供的paddle.vision.datasets.MNIST API加载MNIST数据集。但实践中，我们面临的任务和数据环境千差万别，通常需要自己编写适合当前任务的数据处理程序，一般涉及如下五个环节：
+
+读入数据
+划分数据集
+生成批次数据
+训练样本集乱序
+校验数据有效性
+前提条件
+
+在数据读取与处理前，首先要加载飞桨平台和数据处理库，代码如下。
+
+In [4]
+# 数据处理部分之前的代码，加入部分数据处理的库
+import paddle
+from paddle.nn import Linear
+import paddle.nn.functional as F
+import os
+import gzip
+import json
+import random
+import numpy as np
+2.3.1 读入数据并划分数据集
+在实际应用中，保存到本地的数据存储格式多种多样，如MNIST数据集以json格式存储在本地，其数据存储结构如 图2 所示。
+
+
+
+图2：MNIST数据集的存储结构
+
+
+data包含三个元素的列表：训练集train_set、验证集val_set、测试集test_set，分别为50 000条训练样本、10 000条验证样本和10 000条测试样本。每条样本数据都包含手写数字的图像和对应的标签。
+
+训练集：用于确定模型参数。
+验证集：用于调节模型超参数（如多个网络结构、正则化权重的最优选择）。
+测试集：用于估计应用效果（没有在模型中应用过的数据，更贴近模型在真实场景应用的效果）。
+train_set包含两个元素的列表：train_images、train_labels。
+
+train_images：[50 000, 784]的二维列表，包含50 000张图片。每张图片用一个长度为784的向量表示，内容是
+28
+×
+28
+28×28像素的灰度值（黑白图片）。
+train_labels：[50 000, ]的列表，表示这些图片对应的分类标签，即0~9之间的一个数字。
+在本地./work/目录下读取文件名称为mnist.json.gz的MNIST数据，并拆分成训练集、验证集和测试集，代码实现如下。
+
+In [5]
+# 声明数据集文件位置
+datafile = './work/mnist.json.gz'
+print('loading mnist dataset from {} ......'.format(datafile))
+# 加载json数据文件
+data = json.load(gzip.open(datafile))
+print('mnist dataset load done')
+# 读取到的数据区分训练集，验证集，测试集
+train_set, val_set, eval_set = data
+
+# 观察训练集数据
+imgs, labels = train_set[0], train_set[1]
+print("训练数据集数量: ", len(imgs))
+
+# 观察验证集数量
+imgs, labels = val_set[0], val_set[1]
+print("验证数据集数量: ", len(imgs))
+
+# 观察测试集数量
+imgs, labels = val= eval_set[0], eval_set[1]
+print("测试数据集数量: ", len(imgs))
+print(len(imgs[0]))
+loading mnist dataset from ./work/mnist.json.gz ......
+---------------------------------------------------------------------------FileNotFoundError Traceback (most recent call last)/tmp/ipykernel_2331/1245164830.py in <module> 3 print('loading mnist dataset from {} ......'.format(datafile)) 4 # 加载json数据文件 ----> 5 data = json.load(gzip.open(datafile)) 6 print('mnist dataset load done') 7 # 读取到的数据区分训练集，验证集，测试集 /opt/conda/envs/python35-paddle120-env/lib/python3.7/gzip.py in open(filename, mode, compresslevel, encoding, errors, newline) 51 gz_mode = mode.replace("t", "") 52 if isinstance(filename, (str, bytes, os.PathLike)): ---> 53 binary_file = GzipFile(filename, gz_mode, compresslevel) 54 elif hasattr(filename, "read") or hasattr(filename, "write"): 55 binary_file = GzipFile(None, gz_mode, compresslevel, filename) /opt/conda/envs/python35-paddle120-env/lib/python3.7/gzip.py in __init__(self, filename, mode, compresslevel, fileobj, mtime) 161 mode += 'b' 162 if fileobj is None: --> 163 fileobj = self.myfileobj = builtins.open(filename, mode or 'rb') 164 if filename is None: 165 filename = getattr(fileobj, 'name', '') FileNotFoundError: [Errno 2] No such file or directory: './work/mnist.json.gz'
+扩展阅读：为什么学术界的模型总在不断精进呢？
+通常某组织发布一个新任务的训练集和测试集数据后，全世界的科学家都针对该数据集进行创新研究，随后大量针对该数据集的论文会陆续发表。论文1的A模型声称在测试集的准确率70%，论文2的B模型声称在测试集的准确率提高到72%，论文
+N
+N的
+x
+x模型声称在测试集的准确率提高到90% ...
+
+然而这些论文中的模型在测试集上准确率提升真实有效么？我们不妨大胆猜测一下。假设所有论文共产生1000个模型，这些模型使用的是测试数据集来评判模型效果，并最终选出效果最优的模型。这相当于把原始的测试集当作了验证集，使得测试集失去了真实评判模型效果的能力，正如机器学习领域非常流行的一句话：“拷问数据足够久，它终究会招供”。
+
+
+
+图3：拷问数据足够久，它总会招供
+
+
+那么当我们需要将学术界研发的模型复用于工业项目时，应该如何选择呢？给读者一个小建议：当几个模型的准确率在测试集上差距不大时，尽量选择网络结构相对简单的模型。往往越精巧设计的模型和方法，越不容易在不同的数据集之间迁移。
+
+2.3.2 训练样本乱序、生成批次数据
+（1）训练样本乱序： 先将样本按顺序进行编号，建立ID集合index_list。然后将index_list乱序，最后按乱序后的顺序读取数据。
+
+说明：
+
+通过大量实验发现，模型对最后出现的数据印象更加深刻。训练数据导入后，越接近模型训练结束，最后几个批次数据对模型参数的影响越大。为了避免模型记忆影响训练效果，需要进行样本乱序操作。
+
+（2）生成批次数据： 先设置合理的batch size，再将数据转变成符合模型输入要求的np.array格式返回。同时，在返回数据时将Python生成器设置为yield模式，以减少内存占用。
+
+在执行如上两个操作之前，需要先将数据处理代码封装成load_data函数，方便后续调用。load_data有三种模型：train、valid、eval，分为对应返回的数据是训练集、验证集、测试集。
+
+In [ ]
+imgs, labels = train_set[0], train_set[1]
+print("训练数据集数量: ", len(imgs))
+# 获得数据集长度
+imgs_length = len(imgs)
+# 定义数据集每个数据的序号，根据序号读取数据
+index_list = list(range(imgs_length))
+# 读入数据时用到的批次大小
+BATCHSIZE = 100
+
+# 随机打乱训练数据的索引序号
+random.shuffle(index_list)
+
+# 定义数据生成器，返回批次数据
+def data_generator():
+    imgs_list = []
+    labels_list = []
+    for i in index_list:
+        # 将数据处理成希望的类型
+        img = np.array(imgs[i]).astype('float32')
+        label = np.array(labels[i]).astype('float32')
+        imgs_list.append(img) 
+        labels_list.append(label)
+        if len(imgs_list) == BATCHSIZE:
+            # 获得一个batchsize的数据，并返回
+            yield np.array(imgs_list), np.array(labels_list)
+            # 清空数据读取列表
+            imgs_list = []
+            labels_list = []
+
+    # 如果剩余数据的数目小于BATCHSIZE，
+    # 则剩余数据一起构成一个大小为len(imgs_list)的mini-batch
+    if len(imgs_list) > 0:
+        yield np.array(imgs_list), np.array(labels_list)
+    return data_generator
+In [ ]
+# 声明数据读取函数，从训练集中读取数据
+train_loader = data_generator
+# 以迭代的形式读取数据
+for batch_id, data in enumerate(train_loader()):
+    image_data, label_data = data
+    if batch_id == 0:
+        # 打印数据shape和类型
+        print("打印第一个batch数据的维度:")
+        print("图像维度: {}, 标签维度: {}".format(image_data.shape, label_data.shape))
+    break
+2.3.3 校验数据有效性
+在实际应用中，原始数据可能存在标注不准确、数据杂乱或格式不统一等情况。因此在完成数据处理流程后，还需要进行数据校验，一般有两种方式：
+
+机器校验：加入一些校验和清理数据的操作。
+人工校验：先打印数据输出结果，观察是否是设置的格式。再从训练的结果验证数据处理和读取的有效性。
+2.3.3.1 机器校验
+如下代码所示，如果数据集中的图片数量和标签数量不等，说明数据逻辑存在问题，可使用assert语句校验图像数量和标签数据是否一致。
+
+In [ ]
+imgs_length = len(imgs)
+
+assert len(imgs) == len(labels), \
+        "length of train_imgs({}) should be the same as train_labels({})".format(len(imgs), len(labels))
+2.3.3.2 人工校验
+人工校验是指打印数据输出结果，观察是否是预期的格式。实现数据处理和加载函数后，我们可以调用它读取一次数据，观察数据的形状和类型是否与函数中设置的一致。
+
+In [ ]
+# 声明数据读取函数，从训练集中读取数据
+train_loader = data_generator
+# 以迭代的形式读取数据
+for batch_id, data in enumerate(train_loader()):
+    image_data, label_data = data
+    if batch_id == 0:
+        # 打印数据shape和类型
+        print("打印第一个batch数据的维度，以及数据的类型:")
+        print("图像维度: {}, 标签维度: {}, 图像数据类型: {}, 标签数据类型: {}".format(image_data.shape, label_data.shape, type(image_data), type(label_data)))
+    break
+2.3.4 封装数据读取与处理函数
+上文我们从读取数据、划分数据集、到打乱训练数据、构建数据读取器以及数据数据校验，完成了一整套一般性的数据处理流程，下面将这些步骤放在一个函数中实现，方便在神经网络训练时直接调用。
+
+In [ ]
+def load_data(mode='train'):
+    datafile = './work/mnist.json.gz'
+    print('loading mnist dataset from {} ......'.format(datafile))
+    # 加载json数据文件
+    data = json.load(gzip.open(datafile))
+    print('mnist dataset load done')
+   
+    # 读取到的数据区分训练集，验证集，测试集
+    train_set, val_set, eval_set = data
+    if mode=='train':
+        # 获得训练数据集
+        imgs, labels = train_set[0], train_set[1]
+    elif mode=='valid':
+        # 获得验证数据集
+        imgs, labels = val_set[0], val_set[1]
+    elif mode=='eval':
+        # 获得测试数据集
+        imgs, labels = eval_set[0], eval_set[1]
+    else:
+        raise Exception("mode can only be one of ['train', 'valid', 'eval']")
+    print("训练数据集数量: ", len(imgs))
+    
+    # 校验数据
+    imgs_length = len(imgs)
+
+    assert len(imgs) == len(labels), \
+          "length of train_imgs({}) should be the same as train_labels({})".format(len(imgs), len(labels))
+    
+    # 获得数据集长度
+    imgs_length = len(imgs)
+    
+    # 定义数据集每个数据的序号，根据序号读取数据
+    index_list = list(range(imgs_length))
+    # 读入数据时用到的批次大小
+    BATCHSIZE = 100
+    
+    # 定义数据生成器
+    def data_generator():
+        if mode == 'train':
+            # 训练模式下打乱数据
+            random.shuffle(index_list)
+        imgs_list = []
+        labels_list = []
+        for i in index_list:
+            # 将数据处理成希望的类型
+            img = np.array(imgs[i]).astype('float32')
+            label = np.array(labels[i]).astype('float32')
+            imgs_list.append(img) 
+            labels_list.append(label)
+            if len(imgs_list) == BATCHSIZE:
+                # 获得一个batchsize的数据，并返回
+                yield np.array(imgs_list), np.array(labels_list)
+                # 清空数据读取列表
+                imgs_list = []
+                labels_list = []
+    
+        # 如果剩余数据的数目小于BATCHSIZE，
+        # 则剩余数据一起构成一个大小为len(imgs_list)的mini-batch
+        if len(imgs_list) > 0:
+            yield np.array(imgs_list), np.array(labels_list)
+    return data_generator
+下面定义一层神经网络，利用定义好的数据处理函数，完成神经网络的训练。
+
+In [ ]
+# 数据处理部分之后的代码,数据读取的部分调用Load_data函数
+# 定义网络结构,同上一节所使用的网络结构
+class MNIST(paddle.nn.Layer):
+    def __init__(self):
+        super(MNIST, self).__init__()
+        # 定义一层全连接层，输出维度是1
+        self.fc = paddle.nn.Linear(in_features=784, out_features=1)
+
+    def forward(self, inputs):
+        outputs = self.fc(inputs)
+        return outputs
+In [ ]
+# 训练配置，并启动训练过程
+def train(model):
+    model = MNIST()
+    model.train()
+    #调用加载数据的函数
+    train_loader = load_data('train')
+    opt = paddle.optimizer.SGD(learning_rate=0.001, parameters=model.parameters())
+    EPOCH_NUM = 10
+    for epoch_id in range(EPOCH_NUM):
+        for batch_id, data in enumerate(train_loader()):
+            #准备数据，变得更加简洁
+            images, labels = data
+            images = paddle.to_tensor(images)
+            labels = paddle.to_tensor(labels) 
+
+            #前向计算的过程
+            predits = model(images)
+            
+            #计算损失，取一个批次样本损失的平均值
+            loss = F.square_error_cost(predits, labels)
+            avg_loss = paddle.mean(loss)      
+            
+            #每训练了200批次的数据，打印下当前Loss的情况
+            if batch_id % 200 == 0:
+                print("epoch: {}, batch: {}, loss is: {}".format(epoch_id, batch_id, avg_loss.numpy()))
+            
+            #后向传播，更新参数的过程
+            avg_loss.backward()
+            opt.step()
+            opt.clear_grad()
+
+    # 保存模型
+    paddle.save(model.state_dict(), './mnist.pdparams')
+# 创建模型           
+model = MNIST()
+# 启动训练过程
+train(model)
+2.3.5 基于飞桨Dataset和DataLoader API完成数据处理
+上面我们对数据划分、训练样本乱序、生成批次数据以及如何封装数据读取与处理函数进行了详细的介绍。在飞桨框架中，可通过如下两个核心步骤完成数据集的定义与加载。
+
+2.3.5.1 定义数据集
+将磁盘中保存的原始图片、文字等样本和对应的标签映射到Dataset，方便后续通过索引index读取数据，在Dataset中还可以进行一些数据变换、数据增广等预处理操作。在飞桨框架中推荐使用 paddle.io.Dataset 自定义数据集，另外在 paddle.vision.datasets 和 paddle.text 目录下飞桨内置了一些经典数据集方便直接调用。
+
+2.3.5.2 迭代读取数据集
+自动将数据集的样本进行分批、乱序等操作，方便训练时迭代读取，同时还支持多进程异步读取功能可加快数据读取速度。在飞桨框架中可使用 paddle.io.DataLoader 迭代读取数据集。对于样本量较大、数据读取较慢的场景，建议采用异步数据读取方式。异步读取数据时，数据读取和模型训练并行执行，从而加快了数据读取速度，牺牲一小部分内存换取数据读取效率的提升，二者关系如 图4 所示。
+
+
+
+图4：同步数据读取和异步数据读取示意图
+
+
+（1）同步数据读取：数据读取与模型训练串行。当模型需要数据时，才运行数据读取函数获得当前批次的数据。在读取数据期间，模型一直等待数据读取结束才进行训练，数据读取速度相对较慢。
+
+（2）异步数据读取：数据读取和模型训练并行。读取到的数据不断的放入缓存区，无需等待模型训练就可以启动下一轮数据读取。当模型训练完一个批次后，不用等待数据读取过程，直接从缓存区获得下一批次数据进行训练，从而加快了数据读取速度。
+
+（3）异步队列：数据读取和模型训练交互的仓库，二者均可以从仓库中读取数据，它的存在使得两者的工作节奏可以解耦。
+
+通过飞桨paddle.io.Dataset和paddle.io.DataLoader两个API可以轻松创建异步数据读取的迭代器。
+
+接下来我们具体来看如何借助这两个API轻松完成上述功能，具体代码如下：
+
+In [ ]
+import json
+import gzip
+import paddle
+from paddle.vision.transforms import Normalize
+from paddle.io import Dataset
+
+# 定义图像归一化处理方法,这里的CHW指图像格式需为 [C通道数,H图像高度,W图像宽度]
+transform = Normalize(mean=[127.5], std=[127.5], data_format='CHW')
+
+class MNISTDataset(Dataset):
+    """
+    步骤一:继承paddle.io.Dataset类
+    """
+    
+    def __init__(self, datafile, mode='train', transform = None):
+        """
+        步骤二:实现构造函数
+        """
+        super().__init__()
+
+        self.mode = mode
+        self.transform = transform
+
+        print('loading mnist dataset from {} ......'.format(datafile))
+        # 加载json数据文件
+        data = json.load(gzip.open(datafile))
+        print('mnist dataset load done')
+   
+        # 读取到的数据区分训练集,验证集,测试集
+        train_set, val_set, eval_set = data
+
+        if mode=='train':
+            # 获得训练数据集
+            self.imgs, self.labels = train_set[0], train_set[1]
+        elif mode=='valid':
+            # 获得验证数据集
+            self.imgs, self.labels = val_set[0], val_set[1]
+        elif mode=='test':
+            # 获得测试数据集
+            self.imgs, self.labels = eval_set[0], eval_set[1]
+        else:
+            raise Exception("mode can only be one of ['train', 'valid', 'test']")
+    
+    def __getitem__(self, index):
+        """
+        步骤三：实现__getitem__方法，定义指定index时如何获取数据
+        """
+        data = self.imgs[index]
+        label = self.labels[index]
+
+        return self.transform(data),label
+
+    def __len__(self):
+        """
+        步骤四：实现__len__方法，返回数据集总数目
+        """
+        return len(self.imgs)
+
+datafile = './work/mnist.json.gz'
+
+# 下载数据集并初始化 DataSet
+train_dataset = MNISTDataset(datafile, mode='train', transform=transform)
+test_dataset = MNISTDataset(datafile, mode='test', transform=transform)
+
+print('train images: ', train_dataset.__len__(), ', test images: ', test_dataset.__len__())
+另外可通过 transform 字段传入一些对图像进行变换的操作，飞桨在 paddle.vision.transforms 下提供了一些常用的图像变换操作，如对图像进行中心裁剪、水平翻转图像和对图像进行归一化等。
+
+完成数据集初始化之后，可以使用下面的代码打印数据的shape。
+
+In [ ]
+from matplotlib import pyplot as plt
+
+for data in train_dataset:
+    image, label = data
+    print('shape of image: ',image.shape)
+    plt.title(str(label))
+    plt.imshow(image[0])    
+    break
+在定义完paddle.io.Dataset后，使用paddle.io.DataLoader API即可实现异步数据读取，数据会由Python线程预先读取，并异步送入一个队列中，并且可自动完成划分 batch 的工作。
+
+class paddle.io.DataLoader(dataset, batch_size=100, shuffle=True, num_workers=2)
+
+DataLoader返回一个迭代器，迭代的返回dataset中的数据内容；
+
+dataset是支持 map-style 的数据集(可通过下标索引样本)， map-style 的数据集请参考 paddle.io.Dataset API。
+
+使用paddle.io.DataLoader API以batch的方式进行迭代数据，代码如下：
+
+In [ ]
+# 定义并初始化数据读取器
+train_loader = paddle.io.DataLoader(train_dataset, batch_size=64, shuffle=True, 
+                                    num_workers=1, 
+                                    drop_last=True)
+print('step num:',len(train_loader))
+通过上述方法，初始化了一个数据读取器 train_loader，用于加载训练数据集。在数据读取器中几个常用的字段如下：
+
+batch_size：每批次读取样本数，示例中 batch_size=64 表示每批次读取 64 个样本。
+shuffle：样本乱序，示例中 shuffle=True 表示在取数据时打乱样本顺序，以减少过拟合发生的可能。
+drop_last：丢弃不完整的批次样本，示例中 drop_last=True 表示丢弃因数据集样本数不能被 batch_size 整除而产生的最后一个不完整的 batch 样本。
+num_workers：同步/异步读取数据，通过 num_workers 来设置加载数据的子进程个数，num_workers的值设为大于0时，即开启多进程方式异步加载数据，可提升数据读取速度。
+为了方便后续过程对数据的使用，将数据处理过程封装到data_process.py中，后面小节直接调用该文件的实现即可。
+
+数据处理完成后，接下来让我们开始模型训练：
+
+数据迭代器train_loader在每次迭代时的数据shape为[batch_size, 1, 28, 28]，因此需要将该数据形式reshape为向量形式。
+
+In [ ]
+def train(model):
+    print('train:')
+    model.train()
+    opt = paddle.optimizer.SGD(learning_rate=0.001, parameters=model.parameters())
+    EPOCH_NUM = 3
+    for epoch_id in range(EPOCH_NUM):
+        print('epoch:',epoch_id)
+        for batch_id, data in enumerate(train_loader()):
+            images, labels = data
+            images = paddle.to_tensor(images).astype('float32')
+            labels = paddle.to_tensor(labels).astype('float32')
+            
+            images = paddle.reshape(images, [images.shape[0], images.shape[2]*images.shape[3]])
+
+            #前向计算的过程  
+            predicts = model(images)
+
+            #计算损失，取一个批次样本损失的平均值
+            loss = F.square_error_cost(predicts, labels)
+            avg_loss = paddle.mean(loss)       
+            
+            #每训练了200批次的数据，打印下当前Loss的情况
+            if batch_id % 200 == 0:
+                print("epoch: {}, batch: {}, loss is: {}".format(epoch_id, batch_id, avg_loss.numpy()))
+            
+            #后向传播，更新参数的过程
+            avg_loss.backward()
+            opt.step()
+            opt.clear_grad()
+
+    #保存模型参数
+    paddle.save(model.state_dict(), 'mnist.pdparams')
+
+#创建模型
+print("create model:")
+model = MNIST()
+#启动训练过程
+train(model)
+2.3.6 数据增强/增广
+任何数学技巧都不能弥补信息的缺失
+-Cornelius Lanczos（匈牙利数学家、物理学家）
+
+本节介绍的各种数据处理方法仅限于为了实现深度学习任务，所必要的数据处理流程。但在实际任务中，原始数据集未必完全含有解决任务所需要的充足信息。这时候，通过分析任务场景，有针对性的做一些数据增强/增广的策略，往往可以显著的提高模型效果。
+
+数据增强是一种挖机数据集潜力的方法，可以让数据集蕴含更多让模型有效学习的信息。这些方法是领域和任务特定的，通过分析任务场景的复杂性和当前数据集的短板，对现有数据做有针对性的修改，以提供更加多样性的、匹配任务场景复杂性的新数据。下面以计算机视觉相关问题的数据增强为例，给读者一些具体增强方法和背后的思考。
+
+2.3.6.1 基础的数据增强/增广方法和实践
+图5所示为一些基础的图像增强方法，如果我们发现数据集中的猫均是标准姿势，而真实场景中的猫时常有倾斜身姿的情况，那么在原始图片数据的基础上采用旋转的方法造一批数据加入到数据集会有助于提升模型效果。类似的，如果数据集中均是高清图片，而真实场景中经常有拍照模糊或曝光异常的情况，则采用降采样和调整饱和度的方式造一批数据，回有助于提升模型的效果。
+
+
+
+图5：基础的图像增强方法
+
+
+接下来我们通过几个简单的小demo展示如何基于paddle.vision.transforms实现上述变换。
+
+（1）亮度调整
+
+In [ ]
+import numpy as np
+from PIL import Image
+from paddle.vision.transforms import functional as F
+
+img_path = "/home/aistudio/work/cat.jpg"
+
+image=Image.open(img_path)
+
+# adjust_brightness对输入图像进行亮度值调整
+new_img = F.adjust_brightness(image, 0.4)
+
+# 显示图像
+display(image.resize((300,400)))
+display(new_img.resize((300,400)))
+（2）色调调整
+
+In [ ]
+import numpy as np
+from PIL import Image
+from paddle.vision.transforms import functional as F
+
+img_path = "/home/aistudio/work/cat.jpg"
+
+image=Image.open(img_path)
+
+# adjust_hue对输入图像进行色调的调整
+F.adjust_hue(image, 0.1)
+
+# 显示图像
+display(image.resize((300,400)))
+display(new_img.resize((300,400)))
+---------------------------------------------------------------------------FileNotFoundError Traceback (most recent call last)/tmp/ipykernel_2331/1893694581.py in <module> 5 img_path = "/home/aistudio/work/cat.jpg" 6 ----> 7 image=Image.open(img_path) 8 9 # adjust_hue对输入图像进行色调的调整 /opt/conda/envs/python35-paddle120-env/lib/python3.7/site-packages/PIL/Image.py in open(fp, mode, formats) 2910 2911 if filename: -> 2912 fp = builtins.open(filename, "rb") 2913 exclusive_fp = True 2914 FileNotFoundError: [Errno 2] No such file or directory: '/home/aistudio/work/cat.jpg'
+（3）随机旋转
+
+In [ ]
+import numpy as np
+from PIL import Image
+from paddle.vision.transforms import RandomRotation
+
+img_path = "/home/aistudio/work/cat.jpg"
+
+image=Image.open(img_path)
+
+# RandomRotation依据90度，按照均匀分布随机产生一个角度对图像进行旋转
+transform = RandomRotation(90)
+
+new_img = transform(image)
+
+# 显示图像
+display(image.resize((300,400)))
+display(new_img.resize((300,400)))
+2.3.6.2 高阶的数据增强/增广方法和实践
+图6展示了一些高阶的图像增强方法，裁剪和拼接分别适合于“数据集中物体完整，但实际场景中物体存在遮挡”，以及“数据集中物体背景单一，而实际场景中物体的背景多变”的两种情况。具体数据增广实现，参见PaddleClas。
+
+
+
+图6：高阶的图像增强方法
+
+
+（1）文本识别的数据增强方法
+
+图7展示了专门针对文本识别的数据增强方法TIA（Text Image augmentation），对应到“数据集中字体多是平面，而真实场景中的字体往往会在曲面上扭曲的情况，比如拿着相机对一张凸凹不平摆放的纸面拍摄的文字就会存在该效果”。
+
+
+
+图7：文本识别数据增强方法
+
+
+（2）一种新颖的数据增强技巧CopyPaste
+
+现实中的文字检测要面临复杂多样的背景，比如店铺牌匾上的文字周围的背景可能是非常多样的。我们将部分文本区域剪辑出来，随机摆放到图片的各种位置来生成数据用于训练，会大大提高模型在复杂背景中，检测到文字内容的能力。
+
+
+
+图8：一种新颖的数据增强技巧CopyPaste
+
+
+由上述案例可见，数据增强/增广的方法是要根据实际领域和任务来进行设计的，在本书后续更深度的章节我们会展示如何基于飞桨来实现各种数据增强方法。在当前，读者仅需要了解，在深度学习任务的数据处理流程中常要采用这样的技巧。手写数字识别的任务比较简单，数据集也相对规整，并没有必要采用这些方法。
+
+In [ ]2.4 手写数字识别之网络结构
+第2.2节我们尝试使用与房价预测相同的简单神经网络解决手写数字识别问题，但是效果并不理想。原因是手写数字识别的输入是
+28
+×
+28
+28×28的像素值，输出是0~9的数字标签，而线性回归模型无法捕捉二维图像数据中蕴含的复杂信息，如 图1 所示。无论是牛顿第二定律任务，还是房价预测任务，输入特征和输出预测值之间的关系均可以使用“直线”刻画（使用线性方程来表达）。但手写数字识别任务的输入像素和输出数字标签之间的关系显然不是线性的，甚至这个关系复杂到我们靠人脑难以直观理解的程度。
+
+
+
+图1：数字识别任务的输入和输出不是线性关系
+
+
+因此，我们需要尝试使用其他更复杂、更强大的网络来构建手写数字识别任务，观察一下训练效果，即将“横纵式”教学法从横向展开，如 图2 所示。本节主要介绍两种常见的网络结构：经典的多层全连接神经网络和卷积神经网络。
+
+
+
+图2：“横纵式”教学法 — 网络结构优化
+
+
+数据处理
+
+数据处理已在前面内容中介绍，这里直接调用封装好的函数即可：
+
+In [6]
+from data_process import get_MNIST_dataloader
+
+train_loader,_ = get_MNIST_dataloader()
+2.4.1 经典的全连接神经网络
+神经元是构成神经网络的基本单元，其基本结构如 图3 所示。
+
+
+
+图3：神经元结构
+
+
+神经元输入为向量
+x
+=
+[
+x
+1
+;
+.
+.
+.
+;
+x
+D
+]
+x=[x 
+1
+​
+ ;...;x 
+D
+​
+ ]，净输入
+z
+∈
+R
+z∈R表示神经元输入的加权和，公式如下：
+
+z
+=
+∑
+d
+=
+1
+D
+w
+d
+x
+d
++
+b
+,
+z= 
+d=1
+∑
+D
+​
+ w 
+d
+​
+ x 
+d
+​
+ +b,
+
+其中
+w
+=
+[
+w
+1
+;
+.
+.
+.
+;
+w
+D
+]
+∈
+R
+D
+w=[w 
+1
+​
+ ;...;w 
+D
+​
+ ]∈R 
+D
+ 为权重向量，
+b
+∈
+R
+b∈R是偏置。
+
+然后净输入
+z
+z经过激活函数
+f
+(
+.
+)
+f(.)得到该神经元的活性值
+a
+∈
+R
+a∈R：
+
+a
+=
+f
+(
+z
+)
+.
+a=f(z).
+
+经典的全连接神经网络来包含四层网络：输入层、两个隐含层和输出层，将手写数字识别任务通过全连接神经网络表示，如 图4 所示。
+
+
+
+图4：手写数字识别任务的全连接神经网络结构
+
+
+输入层：将数据输入给神经网络。在该任务中，输入层的尺度为28×28的像素值。
+隐含层：增加网络深度和复杂度，隐含层的节点数是可以调整的，节点数越多，神经网络表示能力越强，参数量也会增加。在该任务中，中间的两个隐含层为10×10的结构，通常隐含层会比输入层的尺寸小，以便对关键信息做抽象，激活函数使用常见的Sigmoid函数。
+输出层：输出网络计算结果，输出层的节点数是固定的。如果是回归问题，节点数量为需要回归的数字数量。如果是分类问题，则是分类标签的数量。在该任务中，模型的输出是回归一个数字，输出层的尺寸为1。
+说明：
+
+隐含层引入非线性激活函数Sigmoid是为了增加神经网络的非线性能力。
+
+举例来说，如果一个神经网络采用线性变换，有四个输入
+x
+1
+x 
+1
+​
+ ~
+x
+4
+x 
+4
+​
+ ，一个输出
+y
+y。假设第一层的变换是
+z
+1
+=
+x
+1
+−
+x
+2
+z 
+1
+​
+ =x 
+1
+​
+ −x 
+2
+​
+ 和
+z
+2
+=
+x
+3
++
+x
+4
+z 
+2
+​
+ =x 
+3
+​
+ +x 
+4
+​
+ ，第二层的变换是
+y
+=
+z
+1
++
+z
+2
+y=z 
+1
+​
+ +z 
+2
+​
+ ，则将两层的变换展开后得到
+y
+=
+x
+1
+−
+x
+2
++
+x
+3
++
+x
+4
+y=x 
+1
+​
+ −x 
+2
+​
+ +x 
+3
+​
+ +x 
+4
+​
+ 。也就是说，无论中间累积了多少层线性变换，原始输入和最终输出之间依然是线性关系。
+
+Sigmoid是早期神经网络模型中常见的非线性变换函数，公式为
+
+σ
+(
+x
+)
+=
+1
+1
++
+e
+−
+x
+σ(x)= 
+1+e 
+−x
+ 
+1
+​
+ 
+
+通过如下代码，绘制出Sigmoid的函数曲线。
+
+In [2]
+import numpy as np
+import matplotlib.pyplot as plt
+
+def sigmoid(x):
+    # 直接返回sigmoid函数
+    return 1. / (1. + np.exp(-x))
+ 
+# param:起点，终点，间距
+x = np.arange(-8, 8, 0.2)
+y = sigmoid(x)
+plt.plot(x, y)
+plt.show()
+
+<Figure size 432x288 with 1 Axes>
+针对手写数字识别的任务，网络层的设计如下：
+
+输入层的尺度为
+28
+×
+28
+28×28，但批次计算的时候会统一加1个维度（大小为batch size）。
+中间的两个隐含层为
+10
+×
+10
+10×10的结构，激活函数使用Sigmoid函数。
+与房价预测模型一样，模型的输出是回归一个数字，输出层的尺寸设置成1。
+下述代码为经典全连接神经网络的实现。完成网络结构定义后，即可训练神经网络。
+
+说明：
+数据迭代器train_loader在每次迭代时的数据shape为[batch_size, 1, 28, 28]，因此需要将该数据形式改变为向量形式。
+
+In [3]
+import paddle
+import paddle.nn.functional as F
+from paddle.nn import Linear
+
+# 定义多层全连接神经网络
+class MNIST(paddle.nn.Layer):
+    def __init__(self):
+        super(MNIST, self).__init__()
+        # 定义两层全连接隐含层，输出维度是10，当前设定隐含节点数为10，可根据任务调整
+        self.fc1 = Linear(in_features=784, out_features=10)
+        self.fc2 = Linear(in_features=10, out_features=10)
+        # 定义一层全连接输出层，输出维度是1
+        self.fc3 = Linear(in_features=10, out_features=1)
+    
+    # 定义网络的前向计算，隐含层激活函数为sigmoid，输出层不使用激活函数
+    def forward(self, inputs):
+        inputs = paddle.reshape(inputs, [inputs.shape[0], 784])
+        outputs1 = self.fc1(inputs)
+        outputs1 = F.sigmoid(outputs1)
+        outputs2 = self.fc2(outputs1)
+        outputs2 = F.sigmoid(outputs2)
+        outputs_final = self.fc3(outputs2)
+        return outputs_final
+paddle.summary(net, input_size, dtypes=None)函数能够打印网络的基础结构和参数信息。
+
+paddle.summary(net, input_size=None, dtypes=None, input=None)
+
+关键参数含义如下：
+
+net (Layer) - 网络实例，必须是 Layer 的子类。
+input_size (tuple|InputSpec|list[tuple|InputSpec) - 输入张量的大小。如果网络只有一个输入，那么该值需要设定为tuple或InputSpec。如果模型有多个输入。那么该值需要设定为list[tuple|InputSpec]，包含每个输入的shape。
+dtypes (str，可选) - 输入张量的数据类型，如果没有给定，默认使用 float32 类型。默认值：None
+返回：字典，包含了总的参数量和总的可训练的参数量。
+
+下面我们打印上面定义的全连接神经网络基础结构和参数信息：
+
+In [4]
+model = MNIST()
+params_info = paddle.summary(model, (1, 1, 28, 28))
+print(params_info)
+W0901 17:12:48.648859    98 device_context.cc:447] Please NOTE: device: 0, GPU Compute Capability: 7.0, Driver API Version: 11.2, Runtime API Version: 10.1
+W0901 17:12:48.653869    98 device_context.cc:465] device: 0, cuDNN Version: 7.6.
+---------------------------------------------------------------------------
+ Layer (type)       Input Shape          Output Shape         Param #    
+===========================================================================
+   Linear-1          [[1, 784]]            [1, 10]             7,850     
+   Linear-2          [[1, 10]]             [1, 10]              110      
+   Linear-3          [[1, 10]]              [1, 1]              11       
+===========================================================================
+Total params: 7,971
+Trainable params: 7,971
+Non-trainable params: 0
+---------------------------------------------------------------------------
+Input size (MB): 0.00
+Forward/backward pass size (MB): 0.00
+Params size (MB): 0.03
+Estimated Total Size (MB): 0.03
+---------------------------------------------------------------------------
+
+{'total_params': 7971, 'trainable_params': 7971}
+使用MNIST数据集训练定义好的经典全连接神经网络。
+
+In [7]
+#网络结构部分之后的代码，保持不变
+def train(model):
+    model.train()
+    
+    # 使用SGD优化器，learning_rate设置为0.01
+    opt = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
+    # 训练5轮
+    EPOCH_NUM = 10
+
+    loss_list = []
+    
+    for epoch_id in range(EPOCH_NUM):
+        for batch_id, data in enumerate(train_loader()):
+            #准备数据
+            images, labels = data
+
+            images = paddle.to_tensor(images)
+
+            labels = paddle.to_tensor(labels, dtype="float32")
+            
+            #前向计算的过程
+            predicts = model(images)
+            
+            #计算损失，取一个批次样本损失的平均值
+            loss = F.square_error_cost(predicts, labels)
+            avg_loss = paddle.mean(loss)
+
+            #每训练200批次的数据，打印下当前Loss的情况
+            if batch_id % 200 == 0:
+                loss_list.append(avg_loss.numpy()[0])
+                print("epoch: {}, batch: {}, loss is: {}".format(epoch_id, batch_id, avg_loss.numpy()))
+            
+            #后向传播，更新参数的过程
+            avg_loss.backward()
+            # 最小化loss,更新参数
+            opt.step()
+            # 清除梯度
+            opt.clear_grad()
+
+    #保存模型参数
+    paddle.save(model.state_dict(), 'mnist.pdparams')
+    return loss_list
+
+model = MNIST()
+loss_list = train(model)
+epoch: 0, batch: 0, loss is: [26.372326]
+epoch: 0, batch: 200, loss is: [5.287777]
+epoch: 0, batch: 400, loss is: [3.5908165]
+epoch: 0, batch: 600, loss is: [2.9941204]
+epoch: 0, batch: 800, loss is: [2.546555]
+epoch: 1, batch: 0, loss is: [1.8988627]
+epoch: 1, batch: 200, loss is: [3.2550478]
+epoch: 1, batch: 400, loss is: [1.7275015]
+epoch: 1, batch: 600, loss is: [2.8115048]
+epoch: 1, batch: 800, loss is: [1.8720369]
+epoch: 2, batch: 0, loss is: [1.0676227]
+epoch: 2, batch: 200, loss is: [1.1874528]
+epoch: 2, batch: 400, loss is: [1.7505498]
+epoch: 2, batch: 600, loss is: [0.8794986]
+epoch: 2, batch: 800, loss is: [1.4414923]
+epoch: 3, batch: 0, loss is: [1.2332262]
+epoch: 3, batch: 200, loss is: [2.9190261]
+epoch: 3, batch: 400, loss is: [1.3385816]
+epoch: 3, batch: 600, loss is: [1.1979947]
+epoch: 3, batch: 800, loss is: [1.2318784]
+epoch: 4, batch: 0, loss is: [1.3195264]
+epoch: 4, batch: 200, loss is: [2.0069175]
+epoch: 4, batch: 400, loss is: [1.3191276]
+epoch: 4, batch: 600, loss is: [2.1043043]
+epoch: 4, batch: 800, loss is: [0.57155544]
+epoch: 5, batch: 0, loss is: [1.6456364]
+epoch: 5, batch: 200, loss is: [1.3160316]
+epoch: 5, batch: 400, loss is: [0.9441038]
+epoch: 5, batch: 600, loss is: [1.2691654]
+epoch: 5, batch: 800, loss is: [1.1167347]
+epoch: 6, batch: 0, loss is: [1.3876636]
+epoch: 6, batch: 200, loss is: [1.1393352]
+epoch: 6, batch: 400, loss is: [0.8363707]
+epoch: 6, batch: 600, loss is: [1.2191572]
+epoch: 6, batch: 800, loss is: [1.279335]
+epoch: 7, batch: 0, loss is: [1.5731208]
+epoch: 7, batch: 200, loss is: [0.6682512]
+epoch: 7, batch: 400, loss is: [1.0530869]
+epoch: 7, batch: 600, loss is: [1.2246159]
+epoch: 7, batch: 800, loss is: [0.84340286]
+epoch: 8, batch: 0, loss is: [1.2415442]
+epoch: 8, batch: 200, loss is: [1.0431266]
+epoch: 8, batch: 400, loss is: [0.830081]
+epoch: 8, batch: 600, loss is: [1.3235867]
+epoch: 8, batch: 800, loss is: [0.83520806]
+epoch: 9, batch: 0, loss is: [0.8851687]
+epoch: 9, batch: 200, loss is: [1.3586344]
+epoch: 9, batch: 400, loss is: [1.5049815]
+epoch: 9, batch: 600, loss is: [2.061728]
+epoch: 9, batch: 800, loss is: [1.1433309]
+根据损失函数变化情况绘制曲线：
+
+In [10]
+from tools import plot
+
+plot(loss_list)
+
+<Figure size 720x360 with 1 Axes>
+2.4.2 卷积神经网络
+虽然使用经典的全连接神经网络可以提升一定的准确率，但其输入数据的形式导致丢失了图像像素间的空间信息，这影响了网络对图像内容的理解。对于计算机视觉问题，效果最好的模型仍然是卷积神经网络。卷积神经网络针对视觉问题的特点进行了网络结构优化，可以直接处理原始形式的图像数据，保留像素间的空间信息，因此更适合处理视觉问题。
+
+卷积神经网络由多个卷积层和池化层组成，如 图5 所示。卷积层负责对输入进行扫描以生成更抽象的特征表示，池化层对这些特征表示进行过滤，保留最关键的特征信息。
+
+
+
+图5：在处理计算机视觉任务中大放异彩的卷积神经网络
+
+
+说明：
+
+本节只简单介绍用卷积神经网络实现手写数字识别任务，以及它带来的效果提升。读者可以将卷积神经网络先简单的理解成是一种比经典的全连接神经网络更强大的模型即可，更详细的原理和实现在接下来的《计算机视觉-卷积神经网络基础》中讲述。
+
+两层卷积和池化的神经网络实现如下所示。
+
+注：本实现与图5不同，如本实现输出长度为1。
+
+In [11]
+# 定义 SimpleNet 网络结构
+import paddle
+from paddle.nn import Conv2D, MaxPool2D, Linear
+import paddle.nn.functional as F
+# 多层卷积神经网络实现
+class MNIST(paddle.nn.Layer):
+     def __init__(self):
+         super(MNIST, self).__init__()
+         
+         # 定义卷积层，输出特征通道out_channels设置为20，卷积核的大小kernel_size为5，卷积步长stride=1，padding=2
+         self.conv1 = Conv2D(in_channels=1, out_channels=20, kernel_size=5, stride=1, padding=2)
+         # 定义池化层，池化核的大小kernel_size为2，池化步长为2
+         self.max_pool1 = MaxPool2D(kernel_size=2, stride=2)
+         # 定义卷积层，输出特征通道out_channels设置为20，卷积核的大小kernel_size为5，卷积步长stride=1，padding=2
+         self.conv2 = Conv2D(in_channels=20, out_channels=20, kernel_size=5, stride=1, padding=2)
+         # 定义池化层，池化核的大小kernel_size为2，池化步长为2
+         self.max_pool2 = MaxPool2D(kernel_size=2, stride=2)
+         # 定义一层全连接层，输出维度是1
+         self.fc = Linear(in_features=980, out_features=1)
+         
+    # 定义网络前向计算过程，卷积后紧接着使用池化层，最后使用全连接层计算最终输出
+    # 卷积层激活函数使用Relu，全连接层不使用激活函数
+     def forward(self, inputs):
+         x = self.conv1(inputs)
+         x = F.relu(x)
+         x = self.max_pool1(x)
+         x = self.conv2(x)
+         x = F.relu(x)
+         x = self.max_pool2(x)
+         x = paddle.reshape(x, [x.shape[0], -1])
+         x = self.fc(x)
+         return x
+打印网络结构：
+
+In [12]
+model = MNIST()
+params_info = paddle.summary(model, (1, 1, 28, 28))
+print(params_info)
+---------------------------------------------------------------------------
+ Layer (type)       Input Shape          Output Shape         Param #    
+===========================================================================
+   Conv2D-1       [[1, 1, 28, 28]]     [1, 20, 28, 28]          520      
+  MaxPool2D-1    [[1, 20, 28, 28]]     [1, 20, 14, 14]           0       
+   Conv2D-2      [[1, 20, 14, 14]]     [1, 20, 14, 14]        10,020     
+  MaxPool2D-2    [[1, 20, 14, 14]]      [1, 20, 7, 7]            0       
+   Linear-10         [[1, 980]]             [1, 1]              981      
+===========================================================================
+Total params: 11,521
+Trainable params: 11,521
+Non-trainable params: 0
+---------------------------------------------------------------------------
+Input size (MB): 0.00
+Forward/backward pass size (MB): 0.19
+Params size (MB): 0.04
+Estimated Total Size (MB): 0.23
+---------------------------------------------------------------------------
+
+{'total_params': 11521, 'trainable_params': 11521}
+使用MNIST数据集训练定义好的卷积神经网络，如下所示。
+
+In [13]
+#网络结构部分之后的代码，保持不变
+def train(model):
+    model.train()
+    
+    learning_rate = 0.001 
+
+    # 使用SGD优化器，设置learning_rate
+    opt = paddle.optimizer.SGD(learning_rate=learning_rate, parameters=model.parameters())
+    # 训练5轮
+    EPOCH_NUM = 10
+    # MNIST图像高和宽
+    IMG_ROWS, IMG_COLS = 28, 28
+
+    loss_list = []
+
+    for epoch_id in range(EPOCH_NUM):
+        for batch_id, data in enumerate(train_loader()):
+            #准备数据
+            images, labels = data
+            images = paddle.to_tensor(images)
+            labels = paddle.to_tensor(labels, dtype="float32")
+            
+            #前向计算的过程
+            predicts = model(images) # [batch_size, 1]
+
+            #计算损失，取一个批次样本损失的平均值
+            loss = F.square_error_cost(predicts, labels)
+            avg_loss = paddle.mean(loss)
+
+            #每训练200批次的数据，打印下当前Loss的情况
+            if batch_id % 200 == 0:
+                loss_list.append(avg_loss.numpy()[0])
+                print("epoch: {}, batch: {}, loss is: {}".format(epoch_id, batch_id, avg_loss.numpy()))
+            
+            #后向传播，更新参数的过程
+            avg_loss.backward()
+            # 最小化loss,更新参数
+            opt.step()
+            # 清除梯度
+            opt.clear_grad()
+
+    #保存模型参数
+    paddle.save(model.state_dict(), 'mnist.pdparams')
+
+    return loss_list
+
+model = MNIST()
+loss_list_conv = train(model)
+epoch: 0, batch: 0, loss is: [33.812702]
+epoch: 0, batch: 200, loss is: [2.4981875]
+epoch: 0, batch: 400, loss is: [2.748225]
+epoch: 0, batch: 600, loss is: [2.2872992]
+epoch: 0, batch: 800, loss is: [2.0726104]
+epoch: 1, batch: 0, loss is: [1.7020338]
+epoch: 1, batch: 200, loss is: [2.6824403]
+epoch: 1, batch: 400, loss is: [1.6056092]
+epoch: 1, batch: 600, loss is: [1.59251]
+epoch: 1, batch: 800, loss is: [1.869786]
+epoch: 2, batch: 0, loss is: [2.965779]
+epoch: 2, batch: 200, loss is: [1.7460155]
+epoch: 2, batch: 400, loss is: [1.9291373]
+epoch: 2, batch: 600, loss is: [1.5594203]
+epoch: 2, batch: 800, loss is: [1.7343291]
+epoch: 3, batch: 0, loss is: [1.6700295]
+epoch: 3, batch: 200, loss is: [1.686054]
+epoch: 3, batch: 400, loss is: [1.0776438]
+epoch: 3, batch: 600, loss is: [1.785841]
+epoch: 3, batch: 800, loss is: [1.9272344]
+epoch: 4, batch: 0, loss is: [1.8695885]
+epoch: 4, batch: 200, loss is: [1.0488331]
+epoch: 4, batch: 400, loss is: [1.5479116]
+epoch: 4, batch: 600, loss is: [1.3251128]
+epoch: 4, batch: 800, loss is: [1.5191156]
+epoch: 5, batch: 0, loss is: [1.605602]
+epoch: 5, batch: 200, loss is: [2.2810135]
+epoch: 5, batch: 400, loss is: [1.3443254]
+epoch: 5, batch: 600, loss is: [1.8948362]
+epoch: 5, batch: 800, loss is: [1.1520746]
+epoch: 6, batch: 0, loss is: [1.0940346]
+epoch: 6, batch: 200, loss is: [1.2191136]
+epoch: 6, batch: 400, loss is: [1.1798136]
+epoch: 6, batch: 600, loss is: [1.7190629]
+epoch: 6, batch: 800, loss is: [1.5363996]
+epoch: 7, batch: 0, loss is: [0.72659385]
+epoch: 7, batch: 200, loss is: [0.8434095]
+epoch: 7, batch: 400, loss is: [1.6714227]
+epoch: 7, batch: 600, loss is: [1.278099]
+epoch: 7, batch: 800, loss is: [0.8889255]
+epoch: 8, batch: 0, loss is: [1.0278771]
+epoch: 8, batch: 200, loss is: [1.2026134]
+epoch: 8, batch: 400, loss is: [1.2272083]
+epoch: 8, batch: 600, loss is: [1.148236]
+epoch: 8, batch: 800, loss is: [1.2218374]
+epoch: 9, batch: 0, loss is: [1.5385004]
+epoch: 9, batch: 200, loss is: [1.3261033]
+epoch: 9, batch: 400, loss is: [0.9551685]
+epoch: 9, batch: 600, loss is: [1.0667143]
+epoch: 9, batch: 800, loss is: [1.651695]
+代码解释
+同时绘制两个网络结构训练时损失函数变化曲线：
+
+In [14]
+def plot_two_losses(loss_list_1, loss_list_2):
+    plt.figure(figsize=(10,5))
+    
+    freqs = [i for i in range(len(loss_list_1))]
+
+    # 绘制训练损失变化曲线
+    plt.plot(freqs, loss_list_1, color='#e4007f', label="Train loss1")
+    plt.plot(freqs, loss_list_2, color='#f19ec2', linestyle='--', label="Train loss2")
+    
+    # 绘制坐标轴和图例
+    plt.ylabel("loss", fontsize='large')
+    plt.xlabel("freq", fontsize='large')
+    plt.legend(loc='upper right', fontsize='x-large')
+    
+    plt.show()
+
+plot_two_losses(loss_list, loss_list_conv)
+
+<Figure size 720x360 with 1 Axes>
+从损失函数变化趋势看，全连接神经网络和卷积神经网络收敛速度相当。目前我们的卷积神经网络做的是一个回归任务，接下来我们尝试将回归任务替换成分类任务，看看卷积神经网络效果如何。2.5 手写数字识别之损失函数
+第2.4节我们尝试通过更复杂的模型（经典的全连接神经网络和卷积神经网络），提升手写数字识别模型训练的准确性。本节我们继续将“横纵式”教学法从横向展开，如 图1 所示，探讨损失函数的优化对模型训练效果的影响。
+
+
+
+图1：“横纵式”教学法 — 损失函数优化
+
+
+损失函数是模型优化的目标，用于在众多的参数取值中，识别最理想的取值。损失函数的计算在训练过程的代码中，每一轮模型训练的过程都相同，分如下3步：1）先根据输入数据正向计算预测输出；2）再根据预测值和真实值计算损失；3）最后根据损失反向传播梯度并更新参数。
+
+2.5.1 分类任务的损失函数
+在第2.4节我们复用了房价预测模型的损失函数：均方误差。从预测效果来看，虽然损失不断下降，模型的预测值逐渐逼近真实值，但模型的最终效果不够理想。究其根本，不同的深度学习任务需要有各自适宜的损失函数。我们以房价预测和手写数字识别两个任务为例，详细剖析其中的缘由有如下3点：
+
+（1）房价预测是回归任务，而手写数字识别是分类任务，使用均方误差作为分类任务的损失函数存在逻辑和效果上的缺欠。
+
+（2）房价可以是大于0的任何浮点数，而手写数字识别的输出只可能是0~9之间的10个整数，相当于一种标签。
+
+（3）在房价预测的案例中，由于房价本身是一个连续的实数值，因此以模型输出的数值和真实房价差距作为损失函数是符合道理的。但对于分类问题，真实结果是分类标签，而模型输出是实数值，导致以两者相减作为损失不具备物理含义。
+
+那么，什么是分类任务的合理输出呢？分类任务本质上是“某种特征组合下的分类概率”，下面以一个简单案例说明，如 图2 所示。
+
+
+
+图2：观测数据和背后规律之间的关系
+
+
+在本案例中，医生根据肿瘤大小
+x
+x作为肿瘤性质
+y
+y的参考判断（判断的因素有很多，肿瘤大小只是其中之一），那么我们观测到该模型判断的结果是
+x
+x和
+y
+y的标签（1为恶性，0为良性）。而这个数据背后的规律是不同大小的肿瘤，属于恶性肿瘤的概率。观测数据是真实规律抽样下的结果，分类模型应该拟合这个真实规律，输出属于该分类标签的概率。
+
+2.5.2 Softmax函数
+如果模型能输出10个标签的概率，对应真实标签的概率输出尽可能接近100%，而其他标签的概率输出尽可能接近0%，且所有输出概率之和为1。这是一种更合理的假设！与此对应，真实的标签值可以转变成一个10维度的one-hot向量，在对应数字的位置上为1，其余位置为0，比如标签“6”可以转变成[0,0,0,0,0,0,1,0,0,0]。
+
+为了实现上述思路，需要引入Softmax函数，它可以将原始输出转变成对应标签的概率，公式如下，其中
+C
+C是标签类别个数。
+
+s
+o
+f
+t
+m
+a
+x
+(
+x
+i
+)
+=
+e
+x
+i
+∑
+j
+=
+0
+N
+e
+x
+j
+,
+i
+=
+0
+,
+.
+.
+.
+,
+C
+−
+1
+softmax(x 
+i
+​
+ )= 
+∑ 
+j=0
+N
+​
+ e 
+x 
+j
+​
+ 
+ 
+e 
+x 
+i
+​
+ 
+ 
+​
+ ,i=0,...,C−1
+
+从公式的形式可见，每个输出的范围均在0~1之间，且所有输出之和等于1，这是这种变换后可被解释成概率的基本前提。对应到代码上，需要在前向计算中，对全连接网络的输出层增加一个Softmax运算，outputs = F.softmax(outputs)。
+
+图3 是一个三个标签的分类模型（三分类）使用的Softmax输出层，从中可见原始输出的三个数字3、1、-3，经过Softmax层后转变成加和为1的三个概率值0.88、0.12、0。
+
+
+
+图3：网络输出层改为softmax函数
+
+
+上文解释了为何让分类模型的输出拟合概率的原因，但为何偏偏用Softmax函数完成这个职能？ 下面以二分类问题（只输出两个标签）进行原理的探讨。
+
+对于二分类问题，使用两个输出接入Softmax作为输出层，等价于使用单一输出接入Sigmoid函数。如 图4 所示，利用两个标签的输出概率之和为1的条件，Softmax输出0.6和0.4两个标签概率，从数学上等价于输出一个标签的概率0.6。
+
+
+
+图4：对于二分类问题，等价于单一输出接入Sigmoid函数
+
+
+在这种情况下，只有一层的模型为
+S
+(
+w
+T
+x
+i
+)
+S(w 
+T
+ x 
+i
+​
+ )，
+S
+S为Sigmoid函数。模型预测为1的概率为
+S
+(
+w
+T
+x
+i
+)
+S(w 
+T
+ x 
+i
+​
+ )，模型预测为0的概率为
+1
+−
+S
+(
+w
+T
+x
+i
+)
+1−S(w 
+T
+ x 
+i
+​
+ )。
+
+图5 是肿瘤大小和肿瘤性质的数据图。从图中可发现，往往尺寸越大的肿瘤几乎全部是恶性，尺寸极小的肿瘤几乎全部是良性。只有在中间区域，肿瘤的恶性概率会从0逐渐到1（绿色区域），这种数据的分布是符合多数现实问题的规律。如果我们直接线性拟合，相当于红色的直线，会发现直线的纵轴0-1的区域会拉的很长，而我们期望拟合曲线0-1的区域与真实的分类边界区域重合。那么，观察下Sigmoid的曲线趋势可以满足我们对个问题的一切期望，它的概率变化会集中在一个边界区域，有助于模型提升边界区域的分辨率。
+
+
+
+图5：使用Sigmoid拟合输出可提高分类模型对边界的分辨率
+
+
+这就类似于公共区域使用的带有恒温装置的热水器温度阀门，如 图6 所示。由于人体适应的水温在34度-42度之间，我们更期望阀门的水温条件集中在这个区域，而不是在0-100度之间线性分布。
+
+
+
+图6：热水器水温控制
+
+
+2.5.2 交叉熵函数
+在模型输出为分类标签的概率时，直接以标签和概率做比较也不够合理，人们更习惯使用交叉熵误差作为分类问题的损失衡量。交叉熵损失函数的设计是基于最大似然思想：最大概率得到观察结果的假设是真的。如何理解呢？举个例子来说，如 图7 所示。有两个外形相同的盒子，甲盒中有99个白球，1个蓝球；乙盒中有99个蓝球，1个白球。一次试验取出了一个蓝球，请问这个球应该是从哪个盒子中取出的？
+
+
+
+图7：体会最大似然的思想
+
+
+相信大家简单思考后均会得出更可能是从乙盒中取出的，因为从乙盒中取出一个蓝球的概率更高
+（
+P
+(
+D
+∣
+h
+)
+）
+（P(D∣h)），所以观察到一个蓝球更可能是从乙盒中取出的
+(
+P
+(
+h
+∣
+D
+)
+)
+(P(h∣D))。
+D
+D是观测的数据，即蓝球白球；
+h
+h是模型，即甲盒乙盒。这就是贝叶斯公式所表达的思想：
+
+P
+(
+h
+∣
+D
+)
+∝
+P
+(
+h
+)
+⋅
+P
+(
+D
+∣
+h
+)
+P(h∣D)∝P(h)⋅P(D∣h)
+
+依据贝叶斯公式，某二分类模型“生成”
+N
+N个训练样本的概率：
+
+P
+(
+x
+1
+)
+⋅
+S
+(
+w
+T
+x
+1
+)
+⋅
+P
+(
+x
+2
+)
+⋅
+(
+1
+−
+S
+(
+w
+T
+x
+2
+)
+)
+⋅
+…
+⋅
+P
+(
+x
+n
+)
+⋅
+S
+(
+w
+T
+x
+N
+)
+P(x 
+1
+​
+ )⋅S(w 
+T
+ x 
+1
+​
+ )⋅P(x 
+2
+​
+ )⋅(1−S(w 
+T
+ x 
+2
+​
+ ))⋅…⋅P(x 
+n
+​
+ )⋅S(w 
+T
+ x 
+N
+​
+ )
+
+说明：
+
+对于二分类问题，模型为
+S
+(
+w
+T
+x
+i
+)
+S(w 
+T
+ x 
+i
+​
+ )，
+S
+S为Sigmoid函数。当
+y
+i
+y 
+i
+​
+ =1，概率为
+S
+(
+w
+T
+x
+i
+)
+S(w 
+T
+ x 
+i
+​
+ )；当
+y
+i
+y 
+i
+​
+ =0，概率为
+1
+−
+S
+(
+w
+T
+x
+i
+)
+1−S(w 
+T
+ x 
+i
+​
+ )。
+
+经过公式推导，使得上述概率最大等价于最小化交叉熵，得到交叉熵的损失函数。交叉熵的公式如下：
+
+L
+o
+s
+s
+=
+−
+[
+∑
+k
+=
+1
+N
+t
+k
+log
+⁡
+y
+k
++
+(
+1
+−
+t
+k
+)
+log
+⁡
+(
+1
+−
+y
+k
+)
+]
+Loss=−[ 
+k=1
+∑
+N
+​
+ t 
+k
+​
+ logy 
+k
+​
+ +(1−t 
+k
+​
+ )log(1−y 
+k
+​
+ )]
+
+其中，
+log
+⁡
+log表示以
+e
+e为底数的自然对数。
+y
+k
+y 
+k
+​
+ 代表模型输出，
+t
+k
+t 
+k
+​
+ 代表各个标签。
+t
+k
+t 
+k
+​
+ 中只有正确解的标签为1，其余均为0（one-hot表示）。
+
+因此，交叉熵只计算对应着“正确解”标签的输出的自然对数。比如，假设正确标签的索引是“2”，与之对应的神经网络的输出是0.6，则交叉熵误差是
+−
+log
+⁡
+0.6
+=
+0.51
+−log0.6=0.51；若“2”对应的输出是0.1，则交叉熵误差为
+−
+log
+⁡
+0.1
+=
+2.30
+−log0.1=2.30。由此可见，交叉熵误差的值是由正确标签所对应的输出结果决定的。
+
+自然对数的函数曲线可由如下代码实现。
+
+In [2]
+import matplotlib.pyplot as plt
+import numpy as np
+x = np.arange(0.01,1,0.01)
+y = np.log(x)
+plt.title("y=log(x)") 
+plt.xlabel("x") 
+plt.ylabel("y") 
+plt.plot(x,y)
+plt.show()
+plt.figure()
+
+<Figure size 432x288 with 1 Axes>
+<Figure size 432x288 with 0 Axes>
+<Figure size 432x288 with 0 Axes>
+如自然对数的图形所示，当
+x
+x等于1时，
+y
+y为0；随着
+x
+x向0靠近，
+y
+y逐渐变小。因此，正确解标签对应的输出越大，交叉熵的值越接近0；当输出为1时，交叉熵误差为0。反之，如果正确解标签对应的输出越小，则交叉熵的值越大。
+
+2.5.3 交叉熵函数的代码实现
+在手写数字识别任务中，通过如下修改就可以将在现有模型的损失函数替换成交叉熵：
+
+1）网络定义部分，将输出层改成“输出十个标签的概率”的模式。
+
+2）在训练过程部分，将损失函数从均方误差换成交叉熵。
+
+在数据处理部分，同之前一样：
+
+In [3]
+from data_process import get_MNIST_dataloader
+
+train_loader, test_loader = get_MNIST_dataloader()
+在网络定义部分，需要修改输出层结构，代码如下所示。
+
+从：self.fc = Linear(in_features=980, out_features=1)
+到：self.fc = Linear(in_features=980, out_features=10)
+In [4]
+# 定义 SimpleNet 网络结构
+import paddle
+from paddle.nn import Conv2D, MaxPool2D, Linear
+import paddle.nn.functional as F
+# 多层卷积神经网络实现
+class MNIST(paddle.nn.Layer):
+     def __init__(self):
+         super(MNIST, self).__init__()
+         
+         # 定义卷积层，输出特征通道out_channels设置为20，卷积核的大小kernel_size为5，卷积步长stride=1，padding=2
+         self.conv1 = Conv2D(in_channels=1, out_channels=20, kernel_size=5, stride=1, padding=2)
+         # 定义池化层，池化核的大小kernel_size为2，池化步长为2
+         self.max_pool1 = MaxPool2D(kernel_size=2, stride=2)
+         # 定义卷积层，输出特征通道out_channels设置为20，卷积核的大小kernel_size为5，卷积步长stride=1，padding=2
+         self.conv2 = Conv2D(in_channels=20, out_channels=20, kernel_size=5, stride=1, padding=2)
+         # 定义池化层，池化核的大小kernel_size为2，池化步长为2
+         self.max_pool2 = MaxPool2D(kernel_size=2, stride=2)
+         # 定义一层全连接层，输出维度是10
+         self.fc = Linear(in_features=980, out_features=10)
+         
+    # 定义网络前向计算过程，卷积后紧接着使用池化层，最后使用全连接层计算最终输出
+    # 卷积层激活函数使用Relu
+     def forward(self, inputs):
+         x = self.conv1(inputs)
+         x = F.relu(x)
+         x = self.max_pool1(x)
+         x = self.conv2(x)
+         x = F.relu(x)
+         x = self.max_pool2(x)
+         x = paddle.reshape(x, [x.shape[0], 980])
+         x = self.fc(x)
+         return x
+修改计算损失的函数，从均方误差（常用于回归问题）到交叉熵误差（常用于分类问题），代码如下所示。
+
+从：loss = paddle.nn.functional.square_error_cost(predict, label)
+到：loss = paddle.nn.functional.cross_entropy(predict, label)
+In [5]
+def evaluation(model, datasets):
+    model.eval()
+
+    acc_set = list()
+    for batch_id, data in enumerate(datasets()):
+        images, labels = data
+        images = paddle.to_tensor(images)
+        labels = paddle.to_tensor(labels)
+        pred = model(images)   # 获取预测值
+        acc = paddle.metric.accuracy(input=pred, label=labels)
+        acc_set.extend(acc.numpy())
+    
+    # #计算多个batch的准确率
+    acc_val_mean = np.array(acc_set).mean()
+    return acc_val_mean
+In [6]
+#仅修改计算损失的函数，从均方误差（常用于回归问题）到交叉熵误差（常用于分类问题）
+def train(model):
+    model.train()
+    #调用加载数据的函数
+    # train_loader = load_data('train')
+    # val_loader = load_data('valid')
+    opt = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
+    EPOCH_NUM = 10
+    for epoch_id in range(EPOCH_NUM):
+        for batch_id, data in enumerate(train_loader()):
+            #准备数据
+            images, labels = data
+            images = paddle.to_tensor(images)
+            labels = paddle.to_tensor(labels)
+            #前向计算的过程
+            predicts = model(images)
+            
+            #计算损失，使用交叉熵损失函数，取一个批次样本损失的平均值
+            loss = F.cross_entropy(predicts, labels)
+            avg_loss = paddle.mean(loss)
+            
+            #每训练了200批次的数据，打印下当前Loss的情况
+            if batch_id % 200 == 0:
+                print("epoch: {}, batch: {}, loss is: {}".format(epoch_id, batch_id, avg_loss.numpy()))
+            
+            #后向传播，更新参数的过程
+            avg_loss.backward()
+            # 最小化loss,更新参数
+            opt.step()
+            # 清除梯度
+            opt.clear_grad()
+        # acc_train_mean = evaluation(model, train_loader)
+        # acc_val_mean = evaluation(model, val_loader)
+        # print('train_acc: {}, val acc: {}'.format(acc_train_mean, acc_val_mean))   
+    #保存模型参数
+    paddle.save(model.state_dict(), 'mnist.pdparams')
+    
+#创建模型    
+model = MNIST()
+#启动训练过程
+train(model)
+W0622 19:15:00.799525   101 device_context.cc:447] Please NOTE: device: 0, GPU Compute Capability: 8.0, Driver API Version: 11.2, Runtime API Version: 11.2
+W0622 19:15:00.803115   101 device_context.cc:465] device: 0, cuDNN Version: 8.2.
+epoch: 0, batch: 0, loss is: [2.9631767]
+epoch: 0, batch: 200, loss is: [0.28771558]
+epoch: 0, batch: 400, loss is: [0.17397963]
+epoch: 0, batch: 600, loss is: [0.1328078]
+epoch: 0, batch: 800, loss is: [0.22312419]
+epoch: 1, batch: 0, loss is: [0.1861222]
+epoch: 1, batch: 200, loss is: [0.10068697]
+epoch: 1, batch: 400, loss is: [0.14453436]
+epoch: 1, batch: 600, loss is: [0.10306983]
+epoch: 1, batch: 800, loss is: [0.06579047]
+epoch: 2, batch: 0, loss is: [0.05550075]
+epoch: 2, batch: 200, loss is: [0.0553881]
+epoch: 2, batch: 400, loss is: [0.14965281]
+epoch: 2, batch: 600, loss is: [0.05848636]
+epoch: 2, batch: 800, loss is: [0.06287296]
+epoch: 3, batch: 0, loss is: [0.10332403]
+epoch: 3, batch: 200, loss is: [0.2565148]
+epoch: 3, batch: 400, loss is: [0.03804234]
+epoch: 3, batch: 600, loss is: [0.07710356]
+epoch: 3, batch: 800, loss is: [0.05255894]
+epoch: 4, batch: 0, loss is: [0.03155422]
+epoch: 4, batch: 200, loss is: [0.02072622]
+epoch: 4, batch: 400, loss is: [0.07428185]
+epoch: 4, batch: 600, loss is: [0.09284233]
+epoch: 4, batch: 800, loss is: [0.03468031]
+epoch: 5, batch: 0, loss is: [0.02539857]
+epoch: 5, batch: 200, loss is: [0.08541536]
+epoch: 5, batch: 400, loss is: [0.03187229]
+epoch: 5, batch: 600, loss is: [0.04895028]
+epoch: 5, batch: 800, loss is: [0.03515094]
+epoch: 6, batch: 0, loss is: [0.01478073]
+epoch: 6, batch: 200, loss is: [0.00694395]
+epoch: 6, batch: 400, loss is: [0.07129884]
+epoch: 6, batch: 600, loss is: [0.16983847]
+epoch: 6, batch: 800, loss is: [0.09051609]
+epoch: 7, batch: 0, loss is: [0.04717643]
+epoch: 7, batch: 200, loss is: [0.00741225]
+epoch: 7, batch: 400, loss is: [0.07615365]
+epoch: 7, batch: 600, loss is: [0.03185874]
+epoch: 7, batch: 800, loss is: [0.26657808]
+epoch: 8, batch: 0, loss is: [0.051815]
+epoch: 8, batch: 200, loss is: [0.13424751]
+epoch: 8, batch: 400, loss is: [0.02104561]
+epoch: 8, batch: 600, loss is: [0.02238336]
+epoch: 8, batch: 800, loss is: [0.01337203]
+epoch: 9, batch: 0, loss is: [0.04752279]
+epoch: 9, batch: 200, loss is: [0.02498975]
+epoch: 9, batch: 400, loss is: [0.0057624]
+epoch: 9, batch: 600, loss is: [0.0295256]
+epoch: 9, batch: 800, loss is: [0.06521191]
+虽然上述训练过程的损失明显比使用均方误差算法要小，但因为损失函数量纲的变化，我们无法从比较两个不同的损失函数得出谁更加优秀。怎么解决这个问题呢？我们可以回归到问题的本质，谁的分类准确率更高来判断。在后面介绍完计算准确率和作图的内容后，读者可以自行测试采用不同损失函数下，模型准确率的高低。
+
+至此，大家阅读论文中常见的一些分类任务模型图就清晰明了，如全连接神经网络、卷积神经网络，在模型的最后阶段，都是使用Softmax进行处理。
+
+
+
+图8：常见的分类任务模型图
+
+
+由于我们修改了模型的输出格式，因此使用模型做预测时的代码也需要做相应的调整。从模型输出10个标签的概率中选择最大的，将其标签编号输出。
+
+In [8]
+from PIL import Image
+
+# 读取一张本地的样例图片，转变成模型输入的格式
+def load_image(img_path):
+    # 从img_path中读取图像，并转为灰度图
+    im = Image.open(img_path).convert('L')
+    im = im.resize((28, 28), Image.ANTIALIAS)
+    im = np.array(im).reshape(1, 1, 28, 28).astype(np.float32)
+    # 图像归一化
+    im = 1.0 - im / 255.
+    return im
+
+# 定义预测过程
+model = MNIST()
+params_file_path = 'mnist.pdparams'
+img_path = 'work/example_0.jpg'
+# 加载模型参数
+param_dict = paddle.load(params_file_path)
+model.load_dict(param_dict)
+# 灌入数据
+model.eval()
+tensor_img = load_image(img_path)
+#模型反馈10个分类标签的对应概率
+results = model(paddle.to_tensor(tensor_img))
+#取概率最大的标签作为预测输出
+lab = np.argsort(results.numpy())
+print("本次预测的数字是: ", lab[0][-1])
+本次预测的数字是:  0
+作业 2-2
+预习下对于计算机视觉任务，有哪些常见的卷积神经网络（如LeNet-5、AlexNet等）？2.6 手写数字识别之优化算法
+第2.5节我们明确了分类任务的损失函数（优化目标）的相关概念和实现方法，本节我们依旧横向展开"横纵式"教学法，如 图1 所示，本节主要探讨在手写数字识别任务中，使得损失达到最小的参数取值的实现方法。
+
+
+图1：“横纵式”教学法 — 优化算法
+
+
+前提条件
+
+在优化算法之前，需要进行数据处理、设计神经网络结构，代码与上一节保持一致，此处直接调用封装好的代码。
+
+In [1]
+import paddle
+from data_process import get_MNIST_dataloader
+from MNIST_network import MNIST
+
+train_loader, test_loader = get_MNIST_dataloader()
+2.6.1 学习率
+在深度学习神经网络模型中，通常使用标准的随机梯度下降算法更新参数，学习率代表参数更新幅度的大小，即步长。当学习率最优时，模型的有效容量最大，最终能达到的效果最好。学习率和深度学习任务类型有关，合适的学习率往往需要大量的实验和调参经验。探索学习率最优值时需要注意如下两点：
+
+学习率不是越小越好。学习率越小，损失函数的变化速度越慢，意味着我们需要花费更长的时间进行收敛，如 图2 左图所示。
+学习率不是越大越好。只根据总样本集中的一个批次计算梯度，抽样误差会导致计算出的梯度不是全局最优的方向，且存在波动。在接近最优解时，过大的学习率会导致参数在最优解附近震荡，损失难以收敛，如 图2 右图所示。
+
+
+图2: 不同学习率（步长过大/过小）的示意图
+
+
+在训练前，我们往往不清楚一个特定问题设置成怎样的学习率是合理的，因此在训练时可以尝试调小或调大，通过观察Loss下降的情况判断合理的学习率，设置学习率的代码如下所示。
+
+In [2]
+import paddle.nn.functional as F
+
+#仅优化算法的设置有所差别
+def train(model):
+    model.train()
+    
+    #设置不同初始学习率
+    opt = paddle.optimizer.SGD(learning_rate=0.001, parameters=model.parameters())
+    # opt = paddle.optimizer.SGD(learning_rate=0.0001, parameters=model.parameters())
+    # opt = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
+    
+    EPOCH_NUM = 10
+    loss_list = []
+    for epoch_id in range(EPOCH_NUM):
+        for batch_id, data in enumerate(train_loader()):
+            #准备数据
+            images, labels = data
+            images = paddle.to_tensor(images)
+            labels = paddle.to_tensor(labels)
+            
+            #前向计算的过程
+            predicts = model(images)
+            
+            #计算损失，取一个批次样本损失的平均值
+            loss = F.cross_entropy(predicts, labels)
+            avg_loss = paddle.mean(loss)
+            
+            #每训练了100批次的数据，打印下当前Loss的情况
+            if batch_id % 200 == 0:
+                loss = avg_loss.numpy()[0]
+                loss_list.append(loss)
+                print("epoch: {}, batch: {}, loss is: {}".format(epoch_id, batch_id, loss))
+            
+            #后向传播，更新参数的过程
+            avg_loss.backward()
+            # 最小化loss,更新参数
+            opt.step()
+            # 清除梯度
+            opt.clear_grad()
+   
+    #保存模型参数
+    paddle.save(model.state_dict(), 'mnist.pdparams')
+    return loss_list
+    
+#创建模型    
+model = MNIST()
+#启动训练过程
+loss_list = train(model)
+W0902 13:59:43.727392    98 device_context.cc:447] Please NOTE: device: 0, GPU Compute Capability: 7.0, Driver API Version: 11.2, Runtime API Version: 10.1
+W0902 13:59:43.731014    98 device_context.cc:465] device: 0, cuDNN Version: 7.6.
+epoch: 0, batch: 0, loss is: 2.672663927078247
+epoch: 0, batch: 200, loss is: 1.5871143341064453
+epoch: 0, batch: 400, loss is: 0.8906817436218262
+epoch: 0, batch: 600, loss is: 0.8545184135437012
+epoch: 0, batch: 800, loss is: 0.5248807668685913
+epoch: 1, batch: 0, loss is: 0.4951104521751404
+epoch: 1, batch: 200, loss is: 0.3496471643447876
+epoch: 1, batch: 400, loss is: 0.49374574422836304
+epoch: 1, batch: 600, loss is: 0.5409931540489197
+epoch: 1, batch: 800, loss is: 0.45909279584884644
+epoch: 2, batch: 0, loss is: 0.31246766448020935
+epoch: 2, batch: 200, loss is: 0.3619728684425354
+epoch: 2, batch: 400, loss is: 0.172702357172966
+epoch: 2, batch: 600, loss is: 0.2503175139427185
+epoch: 2, batch: 800, loss is: 0.2594001591205597
+epoch: 3, batch: 0, loss is: 0.18350714445114136
+epoch: 3, batch: 200, loss is: 0.31369107961654663
+epoch: 3, batch: 400, loss is: 0.24545088410377502
+epoch: 3, batch: 600, loss is: 0.22522735595703125
+epoch: 3, batch: 800, loss is: 0.20448797941207886
+epoch: 4, batch: 0, loss is: 0.33328133821487427
+epoch: 4, batch: 200, loss is: 0.208677276968956
+epoch: 4, batch: 400, loss is: 0.2658303380012512
+epoch: 4, batch: 600, loss is: 0.1646091341972351
+epoch: 4, batch: 800, loss is: 0.26463451981544495
+epoch: 5, batch: 0, loss is: 0.36017316579818726
+epoch: 5, batch: 200, loss is: 0.0982092022895813
+epoch: 5, batch: 400, loss is: 0.10808548331260681
+epoch: 5, batch: 600, loss is: 0.22752246260643005
+epoch: 5, batch: 800, loss is: 0.2808645963668823
+epoch: 6, batch: 0, loss is: 0.1768714040517807
+epoch: 6, batch: 200, loss is: 0.2420758754014969
+epoch: 6, batch: 400, loss is: 0.21574094891548157
+epoch: 6, batch: 600, loss is: 0.22417373955249786
+epoch: 6, batch: 800, loss is: 0.2321982979774475
+epoch: 7, batch: 0, loss is: 0.19339290261268616
+epoch: 7, batch: 200, loss is: 0.14796173572540283
+epoch: 7, batch: 400, loss is: 0.13107317686080933
+epoch: 7, batch: 600, loss is: 0.1809786856174469
+epoch: 7, batch: 800, loss is: 0.08983369171619415
+epoch: 8, batch: 0, loss is: 0.15719389915466309
+epoch: 8, batch: 200, loss is: 0.13746298849582672
+epoch: 8, batch: 400, loss is: 0.16063809394836426
+epoch: 8, batch: 600, loss is: 0.1283281445503235
+epoch: 8, batch: 800, loss is: 0.11324868351221085
+epoch: 9, batch: 0, loss is: 0.10661625117063522
+epoch: 9, batch: 200, loss is: 0.11727969348430634
+epoch: 9, batch: 400, loss is: 0.17486193776130676
+epoch: 9, batch: 600, loss is: 0.11552000790834427
+epoch: 9, batch: 800, loss is: 0.256372332572937
+绘制loss变化曲线：
+
+In [4]
+from tools import plot
+
+plot(loss_list)
+
+<Figure size 720x360 with 1 Axes>
+2.6.2 学习率的四种主流优化算法
+学习率是优化器的一个参数，调整学习率看似是一件非常麻烦的事情，需要不断的调整步长，观察训练时间和Loss的变化。经过科研人员的不断的实验，当前已经形成了四种比较成熟的优化算法：SGD、Momentum、AdaGrad和Adam，效果如 图3 所示。
+
+
+
+图3: 不同学习率算法效果示意图
+
+
+SGD： 随机梯度下降算法，每次训练少量数据，抽样偏差导致的参数收敛过程中震荡。
+
+Momentum： 引入物理“动量”的概念，累积速度，减少震荡，使参数更新的方向更稳定。
+
+每个批次的数据含有抽样误差，导致梯度更新的方向波动较大。如果我们引入物理动量的概念，给梯度下降的过程加入一定的“惯性”累积，就可以减少更新路径上的震荡，即每次更新的梯度由“历史多次梯度的累积方向”和“当次梯度”加权相加得到。历史多次梯度的累积方向往往是从全局视角更正确的方向，这与“惯性”的物理概念很像，也是为何其起名为“Momentum”的原因。类似不同品牌和材质的篮球有一定的重量差别，街头篮球队中的投手（擅长中远距离投篮）往往更喜欢稍重篮球。一个很重要的原因是，重的篮球惯性大，更不容易受到手势的小幅变形或风吹的影响。
+
+AdaGrad： 根据不同参数距离最优解的远近，动态调整学习率。学习率逐渐下降，依据各参数变化大小调整学习率。
+通过调整学习率的实验可以发现：当某个参数的现值距离最优解较远时（表现为梯度的绝对值较大），我们期望参数更新的步长大一些，以便更快收敛到最优解。当某个参数的现值距离最优解较近时（表现为梯度的绝对值较小），我们期望参数的更新步长小一些，以便更精细的逼近最优解。类似于打高尔夫球，专业运动员第一杆开球时，通常会大力打一个远球，让球尽量落在洞口附近。当第二杆面对离洞口较近的球时，他会更轻柔而细致的推杆，避免将球打飞。与此类似，参数更新的步长应该随着优化过程逐渐减少，减少的程度与当前梯度的大小有关。根据这个思想编写的优化算法称为“AdaGrad”，Ada是Adaptive的缩写，表示“适应环境而变化”的意思。RMSProp是在AdaGrad基础上的改进，学习率随着梯度变化而适应，解决AdaGrad学习率急剧下降的问题。
+
+Adam： 由于动量和自适应学习率两个优化思路是正交的，因此可以将两个思路结合起来，这是当前广泛应用的算法。
+说明：
+
+每种优化算法均有更多的参数设置，详情可查阅飞桨的官方API文档。理论最合理的未必在具体案例中最有效，所以模型调参是很有必要的，最优的模型配置往往是在一定“理论”和“经验”的指导下实验出来的。
+
+我们可以尝试选择不同的优化算法训练模型，观察训练时间和损失变化的情况，代码实现如下。
+
+In [5]
+#仅优化算法的设置有所差别
+def train(model):
+    model.train()
+    
+    #四种优化算法的设置方案，可以逐一尝试效果
+    opt = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
+    # opt = paddle.optimizer.Momentum(learning_rate=0.01, momentum=0.9, parameters=model.parameters())
+    # opt = paddle.optimizer.Adagrad(learning_rate=0.01, parameters=model.parameters())
+    # opt = paddle.optimizer.Adam(learning_rate=0.01, parameters=model.parameters())
+    
+    EPOCH_NUM = 3
+    for epoch_id in range(EPOCH_NUM):
+        for batch_id, data in enumerate(train_loader()):
+            #准备数据
+            images, labels = data
+            images = paddle.to_tensor(images)
+            labels = paddle.to_tensor(labels)
+            
+            #前向计算的过程
+            predicts = model(images)
+            
+            #计算损失，取一个批次样本损失的平均值
+            loss = F.cross_entropy(predicts, labels)
+            avg_loss = paddle.mean(loss)
+            
+            #每训练了100批次的数据，打印下当前Loss的情况
+            if batch_id % 200 == 0:
+                print("epoch: {}, batch: {}, loss is: {}".format(epoch_id, batch_id, avg_loss.numpy()))
+            
+            #后向传播，更新参数的过程
+            avg_loss.backward()
+            # 最小化loss,更新参数
+            opt.step()
+            # 清除梯度
+            opt.clear_grad()
+
+    #保存模型参数
+    paddle.save(model.state_dict(), 'mnist.pdparams')
+    
+#创建模型    
+model = MNIST()
+#启动训练过程
+train(model)
+epoch: 0, batch: 0, loss is: [3.179514]
+epoch: 0, batch: 200, loss is: [0.41207898]
+epoch: 0, batch: 400, loss is: [0.14528263]
+epoch: 0, batch: 600, loss is: [0.17151298]
+epoch: 0, batch: 800, loss is: [0.20650986]
+epoch: 1, batch: 0, loss is: [0.048602]
+epoch: 1, batch: 200, loss is: [0.16017383]
+epoch: 1, batch: 400, loss is: [0.09366961]
+epoch: 1, batch: 600, loss is: [0.20587194]
+epoch: 1, batch: 800, loss is: [0.03139528]
+epoch: 2, batch: 0, loss is: [0.07924803]
+epoch: 2, batch: 200, loss is: [0.03837227]
+epoch: 2, batch: 400, loss is: [0.20707312]
+epoch: 2, batch: 600, loss is: [0.05167127]
+epoch: 2, batch: 800, loss is: [0.0629859]
+2.6.3 模型参数初始化
+模型参数初始化是指在训练前，给要训练的参数一个初始的值。比如我们最终的目的是走到山谷底，如果一开始把你放到半山腰和放到山脚，那是否能够顺利走到谷底以及走到谷底的速度是有很大差距的。同样，在我们训练神经网络的时候，训练参数初始值不同也会导致模型收敛速度和最终训练效果的不同。
+
+在PaddlePaddle框架中，MNIST模型中用到的Conv2D和Linear层都有weight_attr和bias_attr两个参数，默认为None，表示使用默认的权重参数属性。这两个参数可以使用模型的named_parameters()函数获得。
+
+通过下面的代码我们可以查看模型每层的参数情况：
+
+模型的state_dict函数可获取当前层及其子层的所有参数和可持久性buffers。并将所有参数和buffers存放在dict结构中。
+
+In [6]
+model = MNIST()
+
+# 遍历所有的参数名和参数值
+for name, param in model.named_parameters():
+    print(name, param)  
+    
+state_dict = model.state_dict() #collections.OrderedDict类型
+
+print(state_dict.keys())
+
+# 根据某个参数的名字，打印对应的参数值
+# 如打印“conv1.weight”的参数值
+print("conv1.weight:",state_dict["conv1.weight"])
+conv1.weight Parameter containing:
+Tensor(shape=[20, 1, 5, 5], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
+       [[[[ 0.00685916, -0.02827659, -0.00629800,  0.17840426,  0.07073421],
+          [ 0.15301149,  0.14512494, -0.08644208, -0.04089865,  0.06347622],
+          [-0.17223580,  0.53609502, -0.31562763,  0.31539580,  0.11763398],
+          [ 0.06057844,  0.12100003, -0.19036214, -0.32686502, -0.04253779],
+          [-0.24231870, -0.09162699, -0.00356645,  0.13624071,  0.35424659]]],
+
+
+        [[[ 0.19513041, -0.18949197, -0.06306379, -0.33953783, -0.12144631],
+          [-0.52912796, -0.04904719,  0.22196575, -0.21367665, -0.14066246],
+          [-0.47838733,  0.19762798,  0.32846957, -0.06876396, -0.05648636],
+          [-0.49627945,  0.04398900, -0.02770269, -0.09062629, -0.25601473],
+          [ 0.22629717,  0.12104782, -0.21879482, -0.29909152,  0.15422553]]],
+
+
+        [[[-0.57517582,  0.07872081,  0.24480270, -0.10398132, -0.21764469],
+          [-0.15390907,  0.03888793,  0.31359494,  0.05783065,  0.09863662],
+          [-0.00036609,  0.05385838, -0.06690086,  0.12735263, -0.56700391],
+          [-0.39829355, -0.05769483, -0.05732801,  0.33780238,  0.53295583],
+          [-0.15284447, -0.32235619, -0.12371407, -0.02103593,  0.06312265]]],
+
+
+        [[[ 0.23172377,  0.32362208,  0.05168466,  0.50253624, -0.42746297],
+          [ 0.18174489, -0.13101643, -0.20413736,  0.17553115,  0.19926409],
+          [ 0.52452153, -0.21518429, -0.14862841, -0.26547405,  0.15221493],
+          [ 0.24805403,  0.24819772, -0.02215577,  0.04740265,  0.31030568],
+          [ 0.13231085,  0.28731391,  0.17576139,  0.13701966, -0.38116997]]],
+
+
+        [[[ 0.12775137,  0.03297117, -0.17570035,  0.18195666, -0.47419620],
+          [ 0.33481011, -0.00369794,  0.17601000,  0.09904220, -0.01528732],
+          [-0.27129415, -0.38718089,  0.54803246,  0.14578563,  0.23014370],
+          [ 0.22600482, -0.23167014,  0.17863478, -0.02830615, -0.00889434],
+          [-0.53870600,  0.09300359, -0.09527846, -0.37450442,  0.08891475]]],
+
+
+        [[[-0.63375968,  0.01352617, -0.40009904, -0.61710560,  0.42513108],
+          [-0.17352255, -0.15771994,  0.08855379,  0.08413874,  0.15258929],
+          [ 0.29868862,  0.07071455, -0.06578474,  0.07363825, -0.37690639],
+          [ 0.44038859,  0.05002983, -0.36027536, -0.08144029, -0.13867600],
+          [ 0.20790854, -0.23763619,  0.25140327, -0.20502961,  0.51529437]]],
+
+
+        [[[-0.21660955,  0.22310224, -0.69941777,  0.03165551, -0.17004766],
+          [-0.53551018, -0.00880008, -0.03999506, -0.01059055,  0.07984187],
+          [-0.24571578,  0.48378825,  0.23929246, -0.21449521, -0.02937231],
+          [-0.16947500,  0.06570072,  0.26996130, -0.00225378, -0.45664248],
+          [ 0.07661092, -0.02118895, -0.23899272, -0.46309194,  0.00255588]]],
+
+
+        [[[ 0.01068391,  0.18249844, -0.57028669, -0.02930197, -0.49979338],
+          [ 0.23231256,  0.00567782, -0.46816435, -0.05387615, -0.06768128],
+          [-0.57407957, -0.38469478,  0.14671670, -0.19064607,  0.16242966],
+          [ 0.05997788,  0.14379767, -0.43261734, -0.17703882,  0.15757072],
+          [ 0.13257961, -0.19664960, -0.09354297,  0.29407963, -0.09218543]]],
+
+
+        [[[-0.05021130,  0.17844844, -0.42766276, -0.07062170,  0.16383797],
+          [ 0.21554719, -0.24867499, -0.04475411, -0.39096946,  0.26923472],
+          [-0.38155058, -0.20673595,  0.26717725,  0.17506047, -0.13850974],
+          [ 0.24715245,  0.50960469, -0.26948437, -0.34616211,  0.73909211],
+          [-0.04646778,  0.39078084, -0.20954891,  0.18042360, -0.52201396]]],
+
+
+        [[[ 0.08273765, -0.09105711, -0.12958071, -0.29861581, -0.19989121],
+          [ 0.18611236, -0.67686284, -0.18584950, -0.06461700, -0.56305975],
+          [ 0.06481798, -0.14299046, -0.17562066, -0.22412276, -0.28058848],
+          [ 0.37638661, -0.01545838,  0.02834374, -0.44421050,  0.24978781],
+          [ 0.47179404,  0.16267806,  0.40233117,  0.03811143, -0.01092976]]],
+
+
+        [[[ 0.02333970,  0.22006829, -0.54471511, -0.18041711, -0.12503794],
+          [ 0.10296388,  0.66934699,  0.06700514, -0.20929156, -0.44396263],
+          [ 0.17440335, -0.11310478, -0.27263820, -0.03610590,  0.34677291],
+          [ 0.10419460, -0.10790036, -0.02151075, -0.10813204,  0.24426167],
+          [-0.68452549, -0.05186544,  0.42406222,  0.13648765,  0.30811521]]],
+
+
+        [[[ 0.09500170, -0.36259845, -0.01421565, -0.51392865,  0.03173811],
+          [ 0.30929992, -0.37484398, -0.67092603,  0.38448986,  0.20572491],
+          [-0.06885525, -0.08177355,  0.03418944,  0.09427575, -0.09787619],
+          [-0.19711410,  0.03484981, -0.18318318, -0.29350778, -0.12663999],
+          [ 0.28633794,  0.76515442, -0.18395521,  0.04850828, -0.42525050]]],
+
+
+        [[[-0.35616848,  0.21384183, -0.30207559, -0.24183397, -0.18685399],
+          [-0.10017283, -0.26885203, -0.00999357, -0.20930922, -0.30007312],
+          [ 0.04770488, -0.29103780,  0.41294131, -0.16971968,  0.12665810],
+          [-0.17194323,  0.01729790, -0.00445249, -0.09733340, -0.43409133],
+          [-0.20486255,  0.16031756, -0.08515637, -0.48493597, -0.27581355]]],
+
+
+        [[[-0.12680070,  0.45840842,  0.34614697,  0.01164691, -0.18574916],
+          [ 0.38707557, -0.22326174, -0.49643895, -0.20572264,  0.16056405],
+          [ 0.12451726, -0.24313389,  0.52626842, -0.06479061,  0.00620653],
+          [-0.50085860,  0.08915006, -0.18392627, -0.27886039, -0.44590169],
+          [-0.05520649, -0.00192035,  0.19382079,  0.30146438, -0.19075648]]],
+
+
+        [[[ 0.17200373,  0.36045110,  0.41303283, -0.05697197,  0.09817324],
+          [ 0.24160154,  0.20104299, -0.18491277,  0.30328605, -0.15703280],
+          [ 0.14609288, -0.35724214,  0.21076484, -0.39886394, -0.52864009],
+          [-0.22453904, -0.02393566,  0.22230516, -0.23590966,  0.08467520],
+          [ 0.10224124,  0.40317741, -0.02853043, -0.15255164, -0.10038172]]],
+
+
+        [[[ 0.25365898, -0.12408470,  0.03224292, -0.62302363, -0.00868563],
+          [-0.20751679, -0.27265713,  0.10152783, -0.07019686,  0.20044255],
+          [-0.01536619,  0.24629453, -0.50585532,  0.23426042,  0.34668776],
+          [ 0.37670568, -0.04776695,  0.13384424, -0.14209406, -0.57875556],
+          [-0.26221901, -0.30681297, -0.01673537,  0.17959179,  0.21828853]]],
+
+
+        [[[-0.16501173,  0.17561746,  0.07628912, -0.11273076,  0.13463901],
+          [ 0.11364105,  0.01849935, -0.31740916, -0.60119075,  0.04458283],
+          [-0.07207803,  0.12399440,  0.31883177, -0.04306261,  0.31809899],
+          [ 0.53678864,  0.46501875,  0.10381963, -0.00760704,  0.09934480],
+          [ 0.29437843, -0.22324999,  0.09065028, -0.09417098, -0.08439593]]],
+
+
+        [[[ 0.03022816,  0.12597114,  0.43907633,  0.34548521, -0.25947937],
+          [-0.45549130,  0.52134931, -0.32358417,  0.20811863, -0.34024143],
+          [-0.43153605, -0.25069806, -0.29741403, -0.22896214, -0.38898811],
+          [ 0.54590076, -0.12959005,  0.05260053, -0.17379124, -0.30745879],
+          [-0.37525591, -0.09658249, -0.17254332,  0.05943358, -0.03464231]]],
+
+
+        [[[ 0.20201388,  0.02919013, -0.08088612,  0.01559477,  0.17472650],
+          [ 0.02217738,  0.36532468,  0.09082818,  0.32516485,  0.62717056],
+          [-0.41841173, -0.20961802, -0.27907607, -0.53327650, -0.65651703],
+          [-0.03331180,  0.14785196,  0.18553858,  0.01868903, -0.59221572],
+          [ 0.06131181, -0.03520117, -0.85177898,  0.18555664,  0.01231959]]],
+
+
+        [[[-0.62316769,  0.08701386,  0.14838187, -0.23780005,  0.56156313],
+          [-0.15943550,  0.24376908,  0.34804633, -0.05670764, -0.17174038],
+          [-0.68133259, -0.22665225,  0.22788525,  0.81866211, -0.13602504],
+          [-0.25465700, -0.15599780, -0.28056905,  0.16332000,  0.44518515],
+          [-0.02113093, -0.30859464, -0.10784610,  0.37195674,  0.19204357]]]])
+conv1.bias Parameter containing:
+Tensor(shape=[20], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
+       [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0.])
+conv2.weight Parameter containing:
+Tensor(shape=[20, 20, 5, 5], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
+       [[[[-0.04842516, -0.08029010, -0.18321052,  0.13665083, -0.00310786],
+          [ 0.01316942,  0.01703477, -0.03289547, -0.06039572,  0.01729234],
+          [ 0.07795183, -0.01019255, -0.01619649, -0.03624577,  0.03045435],
+          [-0.05737413, -0.11153530, -0.13117975,  0.04525512, -0.04865235],
+          [ 0.01150290,  0.04230673,  0.04859869, -0.03920656, -0.06766543]],
+
+         [[ 0.03040275, -0.05579495, -0.03721107, -0.02039793,  0.02349767],
+          [ 0.10402218,  0.06842967,  0.04437708, -0.04695178,  0.03593487],
+          [ 0.07269627,  0.12320693, -0.03603446, -0.02725364,  0.14172958],
+          [ 0.07811373, -0.00567554,  0.03271879,  0.05423937, -0.03669309],
+          [-0.02546963,  0.13795105,  0.16941258,  0.01445939, -0.07495897]],
+
+         [[-0.00970204,  0.08717278,  0.03948886,  0.03161471, -0.01342452],
+          [-0.01307007, -0.26236951,  0.05505652,  0.01218966, -0.04867758],
+          [ 0.06803223, -0.06957099,  0.01415347, -0.02940745,  0.05541166],
+          [-0.01195714, -0.03342409,  0.07563422,  0.04806461,  0.05999428],
+          [ 0.03009684, -0.07667986, -0.13065594, -0.00281614, -0.03151121]],
+
+         ...,
+
+         [[-0.05550532, -0.06291343,  0.10043516, -0.13087311,  0.03000470],
+          [-0.10445759, -0.10226472,  0.03296762, -0.14403141, -0.00440695],
+          [ 0.03932971,  0.04916470, -0.07688967, -0.00819338,  0.03226198],
+          [ 0.08393429,  0.03892666, -0.01030571, -0.01706931,  0.00926275],
+          [ 0.05829731, -0.17966139,  0.02374594, -0.00765490, -0.02068477]],
+
+         [[ 0.05165485,  0.12393295, -0.09693903, -0.06920276, -0.14272152],
+          [-0.14296801, -0.06419675, -0.08101837,  0.02699590, -0.01101026],
+          [ 0.07865785, -0.02847964, -0.04767105, -0.06292751, -0.02792644],
+          [ 0.03781227, -0.06337287,  0.10960077, -0.05567764,  0.00034367],
+          [-0.06738880, -0.02947779,  0.01456474, -0.02245717,  0.02129958]],
+
+         [[-0.02013259, -0.01687173,  0.01458535, -0.00427398, -0.07280238],
+          [-0.02416323, -0.03606015,  0.03001739,  0.00022196, -0.08827833],
+          [ 0.02064940,  0.17045812, -0.05209301,  0.03668752, -0.04805639],
+          [-0.10638451,  0.05070315, -0.07866702, -0.01839409,  0.03969995],
+          [ 0.00396901, -0.05066794,  0.02775213, -0.08091297,  0.05483221]]],
+
+
+        [[[ 0.04185633,  0.07163000,  0.02353612,  0.07301259,  0.01324197],
+          [-0.04896133,  0.03730998,  0.10001282, -0.01895486, -0.03815692],
+          [-0.04848228, -0.07031865, -0.08686718, -0.01998477, -0.05397718],
+          [-0.08679562,  0.07052211, -0.04362950, -0.00569952, -0.01177182],
+          [ 0.04117786, -0.02817946,  0.08220866,  0.11326317, -0.00927471]],
+
+         [[ 0.01212797,  0.04936966, -0.05634697,  0.05705793, -0.13667816],
+          [ 0.03572141,  0.00228636,  0.00175165,  0.04967417, -0.01179718],
+          [-0.06498671, -0.03038970, -0.02413954,  0.15372913, -0.04139369],
+          [ 0.01032100, -0.05294703,  0.00316197,  0.07240158,  0.00002777],
+          [ 0.10682158, -0.02229001, -0.00935003,  0.07681382,  0.00232255]],
+
+         [[ 0.00351084,  0.10372302, -0.04970520,  0.02191114, -0.11757401],
+          [-0.06228558, -0.08901671, -0.00931545, -0.03228965,  0.03276297],
+          [ 0.01107195,  0.01682849,  0.03364248,  0.07903329,  0.07512107],
+          [ 0.12478322,  0.00384532,  0.01956144, -0.10132410, -0.07275780],
+          [-0.02398505,  0.04186409,  0.04651655, -0.01202679, -0.00504838]],
+
+         ...,
+
+         [[ 0.04461821,  0.00808487,  0.00555061, -0.01431967, -0.02614857],
+          [ 0.04759842, -0.05613897, -0.00544772,  0.05292856,  0.00298492],
+          [-0.12115648, -0.02731785, -0.05948418,  0.04074679,  0.08466259],
+          [ 0.10574198, -0.04008232, -0.10394353, -0.02639852,  0.11049286],
+          [ 0.11733372,  0.05187315,  0.00404155, -0.04136150, -0.00336215]],
+
+         [[-0.04149555,  0.00675234,  0.01423796, -0.01474721,  0.00792756],
+          [-0.12927379, -0.00978363, -0.02188701,  0.07809865, -0.02926444],
+          [ 0.08665561, -0.00281964, -0.04393354,  0.01829349,  0.07911012],
+          [ 0.01448872,  0.05762992, -0.00321733, -0.03440291,  0.04463581],
+          [ 0.03841044, -0.10381646, -0.01932618, -0.03856980,  0.02094867]],
+
+         [[-0.02882951, -0.08565428, -0.09080452, -0.04000576, -0.07269020],
+          [ 0.12983690,  0.01571902,  0.07720028,  0.01375103,  0.03910543],
+          [-0.01024854,  0.01133631,  0.06438381,  0.07261378,  0.14840412],
+          [ 0.01374937, -0.04521683,  0.05477804, -0.01355262, -0.03515146],
+          [ 0.05718626, -0.16190849,  0.02147372, -0.00782114, -0.07004025]]],
+
+
+        [[[ 0.07583300, -0.02820885,  0.05300792,  0.00542720,  0.12516046],
+          [ 0.06020210,  0.11858690,  0.05682371, -0.00590254,  0.07037435],
+          [-0.10353146, -0.12717886, -0.06910776,  0.08883084, -0.00054811],
+          [ 0.01767521, -0.08097462,  0.00492033, -0.06323463, -0.00576807],
+          [ 0.02244565, -0.09164488,  0.06393596, -0.02257344, -0.01569874]],
+
+         [[-0.08124023,  0.15796214, -0.04945521,  0.01870681, -0.00390383],
+          [ 0.01539223, -0.02441236,  0.05842051,  0.00133073,  0.02581081],
+          [ 0.03391039,  0.02032443, -0.07897935,  0.02345095,  0.02789728],
+          [-0.04883847, -0.00576577, -0.02687601,  0.08461127,  0.01148212],
+          [ 0.00427470, -0.08370639, -0.07997342, -0.05005461,  0.02978116]],
+
+         [[-0.05750392,  0.07255925, -0.01636612, -0.03015611,  0.04846285],
+          [-0.00706771,  0.10853414,  0.04668500,  0.00376344,  0.04004541],
+          [ 0.04384706,  0.03126309,  0.05270825, -0.05617063,  0.11446072],
+          [ 0.01019831, -0.02750200, -0.07116103,  0.06956849,  0.16107149],
+          [ 0.01312344,  0.08240703,  0.06850206, -0.12185076,  0.09815940]],
+
+         ...,
+
+         [[-0.01280733, -0.02550051, -0.03055892, -0.00413280, -0.13141689],
+          [-0.01717129,  0.01984228,  0.00275885, -0.03977481,  0.04500667],
+          [ 0.01178519, -0.04080101,  0.02944230,  0.03536454,  0.03784487],
+          [-0.00705960, -0.01413729, -0.00264809, -0.01100500, -0.00454286],
+          [-0.00722889, -0.05507685, -0.05607553, -0.00012039,  0.06392091]],
+
+         [[ 0.01779486, -0.07202761,  0.06065071,  0.00180589, -0.03458759],
+          [-0.03363177,  0.09722894, -0.11379460, -0.04269574,  0.03563803],
+          [ 0.06863476, -0.00360048,  0.05298167,  0.08426961,  0.08290426],
+          [-0.03084364, -0.01353161,  0.00667048,  0.05405263,  0.07051750],
+          [-0.00134665, -0.00061161, -0.03761236,  0.05313950,  0.03484831]],
+
+         [[ 0.13642707,  0.06661936, -0.13489626,  0.06779353, -0.03371165],
+          [ 0.06006323, -0.09677055, -0.13239473,  0.01005304,  0.02632247],
+          [ 0.05612664, -0.17812183, -0.04645997,  0.03781860,  0.04665733],
+          [-0.07935522, -0.02261722,  0.08028147,  0.05874356,  0.00949989],
+          [-0.04510846, -0.01954781,  0.08129469, -0.03879700, -0.04195885]]],
+
+
+        ...,
+
+
+        [[[ 0.04311617,  0.14076813,  0.03567293,  0.09146731, -0.05475181],
+          [-0.09110141, -0.07392356, -0.06702660, -0.12429566,  0.06178958],
+          [ 0.01095681, -0.09050345, -0.08802234, -0.06919430, -0.01185550],
+          [ 0.03364372, -0.04875413,  0.00528686, -0.01612952, -0.12905483],
+          [ 0.03738477, -0.09159284, -0.01696681,  0.02573332,  0.14408062]],
+
+         [[ 0.02396505,  0.01335742,  0.01688723,  0.11205415, -0.07941812],
+          [ 0.02427093, -0.05603881, -0.10590425,  0.00792881, -0.01656183],
+          [ 0.03530726,  0.05426499,  0.02977670,  0.11404727,  0.09945221],
+          [-0.06621393, -0.07823639, -0.06912635,  0.05457773, -0.00936087],
+          [ 0.02024053,  0.06298222,  0.05786319, -0.03381032,  0.04733275]],
+
+         [[-0.06593055, -0.07923815,  0.01651249,  0.04688665, -0.04822629],
+          [-0.02842280,  0.07060724, -0.06389017, -0.15853792, -0.07395336],
+          [ 0.01006375,  0.07462056, -0.02430158, -0.06790108, -0.03668319],
+          [ 0.07827827,  0.05198185, -0.06501245,  0.03204183,  0.20982318],
+          [-0.08638497,  0.06419251, -0.07158568, -0.00529421, -0.02087413]],
+
+         ...,
+
+         [[ 0.03393113, -0.08271125,  0.02041319,  0.04616671,  0.13629910],
+          [-0.10986833,  0.03826354,  0.05981230, -0.03306085, -0.04996925],
+          [ 0.03211767, -0.03246081,  0.13310264, -0.04173230, -0.00205524],
+          [ 0.05793827, -0.02760234, -0.02572171, -0.03984093, -0.04297478],
+          [-0.06150466, -0.01952822,  0.01396992,  0.05304113,  0.02468647]],
+
+         [[ 0.01376449,  0.03938069,  0.01149357,  0.10825098,  0.08834018],
+          [-0.00368270,  0.05435447,  0.00354751, -0.08157624, -0.03122849],
+          [ 0.00440023, -0.04778880, -0.05539897, -0.05178137, -0.00790940],
+          [-0.00549599, -0.06398467,  0.04175593, -0.03340815, -0.07857146],
+          [ 0.05851837,  0.09970795,  0.03199684,  0.10427931, -0.11310953]],
+
+         [[ 0.14792199, -0.06690830,  0.01411365, -0.00058303,  0.12918684],
+          [-0.03707269,  0.06201976,  0.12908266, -0.02716819,  0.03434102],
+          [ 0.13299733,  0.04204443,  0.06115631, -0.02596248,  0.05911577],
+          [ 0.13408585, -0.01330096, -0.05075085, -0.02192910,  0.05789414],
+          [-0.00074550,  0.00182649,  0.00986567, -0.03074306,  0.01911138]]],
+
+
+        [[[-0.03725875, -0.06140297,  0.03168594,  0.00838635,  0.00938935],
+          [ 0.10573972, -0.08355468, -0.02017087, -0.03043095, -0.06246676],
+          [-0.06314994, -0.07474132, -0.02639798, -0.07785455, -0.01051079],
+          [ 0.05073320,  0.04078016, -0.06238253,  0.08710585,  0.06423744],
+          [-0.03347686,  0.08680937,  0.04582042, -0.10890278,  0.01824339]],
+
+         [[-0.03952609,  0.13392264, -0.06514899, -0.05094520,  0.00478079],
+          [ 0.05198830,  0.00821417,  0.01266646,  0.02014027,  0.05999838],
+          [-0.00340272,  0.08939803, -0.00059625,  0.10723002, -0.09372249],
+          [ 0.02715235,  0.07974571,  0.00712920,  0.02431520,  0.03512901],
+          [-0.02868374, -0.07645535,  0.07165837, -0.05497815,  0.04677773]],
+
+         [[-0.14220729, -0.01642417, -0.04778175,  0.05426632,  0.11182562],
+          [ 0.01180977,  0.01818160, -0.04990768, -0.01284826, -0.06897558],
+          [-0.08127917,  0.05318227,  0.06668033,  0.02802232,  0.04250106],
+          [-0.11069144,  0.09053962,  0.07228538, -0.07820071, -0.05467565],
+          [-0.12351068,  0.08575661, -0.02173880, -0.01416278,  0.08615170]],
+
+         ...,
+
+         [[ 0.13423714, -0.03815886,  0.03816330, -0.01621404, -0.07715316],
+          [-0.04702605,  0.00887390,  0.02161213, -0.04889238, -0.03601886],
+          [-0.02038899, -0.04671028,  0.01882195, -0.12411432,  0.06922542],
+          [ 0.04930260, -0.07263442,  0.04453302, -0.03010605, -0.01842250],
+          [-0.00893493,  0.11544286,  0.08021139, -0.03618741,  0.04629109]],
+
+         [[ 0.12497535,  0.06645298,  0.07601072,  0.02511500, -0.02711841],
+          [ 0.00474245, -0.06479405,  0.11967541, -0.10737073,  0.04680381],
+          [-0.10329045, -0.03309850, -0.04942237,  0.13243797,  0.08414938],
+          [ 0.05737696,  0.00524121,  0.00740493, -0.10233473,  0.09649734],
+          [-0.08374887,  0.03654788, -0.03952739,  0.02570211, -0.04423657]],
+
+         [[-0.04342224, -0.03979274, -0.03626437,  0.07393731,  0.11807676],
+          [ 0.06074775, -0.06452077, -0.03056546,  0.03358621, -0.13512947],
+          [ 0.01353175, -0.00045765, -0.06478564, -0.00222581,  0.08562817],
+          [ 0.04201965,  0.04973603, -0.04101499,  0.05920982, -0.00440654],
+          [ 0.06769152,  0.05247637, -0.04876187,  0.04940811,  0.05720046]]],
+
+
+        [[[ 0.07296643, -0.02238671,  0.04880418,  0.05007473,  0.05229439],
+          [ 0.08153880,  0.03813653,  0.01657565, -0.02329348, -0.07657525],
+          [-0.03147863, -0.06040520,  0.04819846, -0.02638522,  0.02811828],
+          [-0.04738356, -0.06207188, -0.05061458, -0.00616325,  0.06493483],
+          [-0.02208322,  0.02398385,  0.08606802, -0.10161741, -0.00498961]],
+
+         [[ 0.05628188,  0.06561081, -0.05283130, -0.02269553,  0.00519735],
+          [-0.04522982,  0.04156234,  0.06538405,  0.05652884, -0.02073733],
+          [ 0.02002987,  0.07048202,  0.03125889,  0.02699916, -0.02652232],
+          [-0.01245643, -0.08906759,  0.03163455,  0.04250871,  0.08008271],
+          [ 0.03875295,  0.02140429, -0.00159948,  0.00532227, -0.06753109]],
+
+         [[ 0.05098309,  0.05519797, -0.11599406,  0.02094416, -0.12674445],
+          [ 0.04749368, -0.06697400, -0.06215895,  0.06356204,  0.06708340],
+          [ 0.06114836,  0.05913837, -0.01162001, -0.05735631,  0.02178494],
+          [ 0.06034366, -0.02576882, -0.09828721, -0.01903550,  0.05332101],
+          [-0.00135989, -0.00547090,  0.04619619,  0.06791047, -0.02876070]],
+
+         ...,
+
+         [[-0.09237070, -0.06885990,  0.00843302,  0.02319575, -0.09126038],
+          [-0.20622770,  0.05770314, -0.05524185,  0.06308909,  0.01949865],
+          [ 0.05947011,  0.00093663,  0.02957422,  0.04034602,  0.00758246],
+          [ 0.03853898,  0.01247289,  0.06215080,  0.02034242, -0.03157216],
+          [-0.12914890, -0.06377766,  0.01450350, -0.05276486,  0.02220368]],
+
+         [[ 0.06516230, -0.05895260, -0.06443317, -0.05874763,  0.02194979],
+          [-0.07734998,  0.05464603,  0.04575077,  0.03758018,  0.14904568],
+          [ 0.07737642, -0.17081270,  0.11026025,  0.00356938,  0.04196765],
+          [-0.08771687,  0.01075565,  0.03652329,  0.09294744,  0.08286404],
+          [-0.07271910, -0.01015406,  0.11786053, -0.03865341, -0.00011255]],
+
+         [[-0.04666478, -0.06141014, -0.02815867,  0.02166881, -0.00056359],
+          [ 0.07982340, -0.04866859,  0.07978345,  0.03913150,  0.15458646],
+          [ 0.02300316, -0.04921987, -0.00396419, -0.04221912,  0.00930112],
+          [-0.01933390, -0.12113122,  0.00977334,  0.00586604, -0.09546758],
+          [-0.11679827,  0.01662397,  0.01081836,  0.00616634, -0.08532871]]]])
+conv2.bias Parameter containing:
+Tensor(shape=[20], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
+       [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        0., 0.])
+fc.weight Parameter containing:
+Tensor(shape=[980, 10], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
+       [[-0.04594205, -0.03668004,  0.03592646, ...,  0.05482418,
+         -0.01147358, -0.01687970],
+        [-0.02310931, -0.07620153, -0.07206465, ...,  0.04278419,
+          0.03364198, -0.01683033],
+        [ 0.02447041,  0.07251372,  0.02300600, ..., -0.06937405,
+          0.03590800,  0.06482572],
+        ...,
+        [ 0.05429860, -0.00249490, -0.07503617, ..., -0.05303785,
+         -0.01864232,  0.06126241],
+        [-0.00797569,  0.05125344, -0.01472158, ...,  0.06139667,
+         -0.06696133,  0.03713059],
+        [ 0.07011503,  0.07623947,  0.03546768, ...,  0.05477322,
+          0.02028764, -0.04694789]])
+fc.bias Parameter containing:
+Tensor(shape=[10], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
+       [0., 0., 0., 0., 0., 0., 0., 0., 0., 0.])
+odict_keys(['conv1.weight', 'conv1.bias', 'conv2.weight', 'conv2.bias', 'fc.weight', 'fc.bias'])
+conv1.weight: Parameter containing:
+Tensor(shape=[20, 1, 5, 5], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
+       [[[[ 0.00685916, -0.02827659, -0.00629800,  0.17840426,  0.07073421],
+          [ 0.15301149,  0.14512494, -0.08644208, -0.04089865,  0.06347622],
+          [-0.17223580,  0.53609502, -0.31562763,  0.31539580,  0.11763398],
+          [ 0.06057844,  0.12100003, -0.19036214, -0.32686502, -0.04253779],
+          [-0.24231870, -0.09162699, -0.00356645,  0.13624071,  0.35424659]]],
+
+
+        [[[ 0.19513041, -0.18949197, -0.06306379, -0.33953783, -0.12144631],
+          [-0.52912796, -0.04904719,  0.22196575, -0.21367665, -0.14066246],
+          [-0.47838733,  0.19762798,  0.32846957, -0.06876396, -0.05648636],
+          [-0.49627945,  0.04398900, -0.02770269, -0.09062629, -0.25601473],
+          [ 0.22629717,  0.12104782, -0.21879482, -0.29909152,  0.15422553]]],
+
+
+        [[[-0.57517582,  0.07872081,  0.24480270, -0.10398132, -0.21764469],
+          [-0.15390907,  0.03888793,  0.31359494,  0.05783065,  0.09863662],
+          [-0.00036609,  0.05385838, -0.06690086,  0.12735263, -0.56700391],
+          [-0.39829355, -0.05769483, -0.05732801,  0.33780238,  0.53295583],
+          [-0.15284447, -0.32235619, -0.12371407, -0.02103593,  0.06312265]]],
+
+
+        [[[ 0.23172377,  0.32362208,  0.05168466,  0.50253624, -0.42746297],
+          [ 0.18174489, -0.13101643, -0.20413736,  0.17553115,  0.19926409],
+          [ 0.52452153, -0.21518429, -0.14862841, -0.26547405,  0.15221493],
+          [ 0.24805403,  0.24819772, -0.02215577,  0.04740265,  0.31030568],
+          [ 0.13231085,  0.28731391,  0.17576139,  0.13701966, -0.38116997]]],
+
+
+        [[[ 0.12775137,  0.03297117, -0.17570035,  0.18195666, -0.47419620],
+          [ 0.33481011, -0.00369794,  0.17601000,  0.09904220, -0.01528732],
+          [-0.27129415, -0.38718089,  0.54803246,  0.14578563,  0.23014370],
+          [ 0.22600482, -0.23167014,  0.17863478, -0.02830615, -0.00889434],
+          [-0.53870600,  0.09300359, -0.09527846, -0.37450442,  0.08891475]]],
+
+
+        [[[-0.63375968,  0.01352617, -0.40009904, -0.61710560,  0.42513108],
+          [-0.17352255, -0.15771994,  0.08855379,  0.08413874,  0.15258929],
+          [ 0.29868862,  0.07071455, -0.06578474,  0.07363825, -0.37690639],
+          [ 0.44038859,  0.05002983, -0.36027536, -0.08144029, -0.13867600],
+          [ 0.20790854, -0.23763619,  0.25140327, -0.20502961,  0.51529437]]],
+
+
+        [[[-0.21660955,  0.22310224, -0.69941777,  0.03165551, -0.17004766],
+          [-0.53551018, -0.00880008, -0.03999506, -0.01059055,  0.07984187],
+          [-0.24571578,  0.48378825,  0.23929246, -0.21449521, -0.02937231],
+          [-0.16947500,  0.06570072,  0.26996130, -0.00225378, -0.45664248],
+          [ 0.07661092, -0.02118895, -0.23899272, -0.46309194,  0.00255588]]],
+
+
+        [[[ 0.01068391,  0.18249844, -0.57028669, -0.02930197, -0.49979338],
+          [ 0.23231256,  0.00567782, -0.46816435, -0.05387615, -0.06768128],
+          [-0.57407957, -0.38469478,  0.14671670, -0.19064607,  0.16242966],
+          [ 0.05997788,  0.14379767, -0.43261734, -0.17703882,  0.15757072],
+          [ 0.13257961, -0.19664960, -0.09354297,  0.29407963, -0.09218543]]],
+
+
+        [[[-0.05021130,  0.17844844, -0.42766276, -0.07062170,  0.16383797],
+          [ 0.21554719, -0.24867499, -0.04475411, -0.39096946,  0.26923472],
+          [-0.38155058, -0.20673595,  0.26717725,  0.17506047, -0.13850974],
+          [ 0.24715245,  0.50960469, -0.26948437, -0.34616211,  0.73909211],
+          [-0.04646778,  0.39078084, -0.20954891,  0.18042360, -0.52201396]]],
+
+
+        [[[ 0.08273765, -0.09105711, -0.12958071, -0.29861581, -0.19989121],
+          [ 0.18611236, -0.67686284, -0.18584950, -0.06461700, -0.56305975],
+          [ 0.06481798, -0.14299046, -0.17562066, -0.22412276, -0.28058848],
+          [ 0.37638661, -0.01545838,  0.02834374, -0.44421050,  0.24978781],
+          [ 0.47179404,  0.16267806,  0.40233117,  0.03811143, -0.01092976]]],
+
+
+        [[[ 0.02333970,  0.22006829, -0.54471511, -0.18041711, -0.12503794],
+          [ 0.10296388,  0.66934699,  0.06700514, -0.20929156, -0.44396263],
+          [ 0.17440335, -0.11310478, -0.27263820, -0.03610590,  0.34677291],
+          [ 0.10419460, -0.10790036, -0.02151075, -0.10813204,  0.24426167],
+          [-0.68452549, -0.05186544,  0.42406222,  0.13648765,  0.30811521]]],
+
+
+        [[[ 0.09500170, -0.36259845, -0.01421565, -0.51392865,  0.03173811],
+          [ 0.30929992, -0.37484398, -0.67092603,  0.38448986,  0.20572491],
+          [-0.06885525, -0.08177355,  0.03418944,  0.09427575, -0.09787619],
+          [-0.19711410,  0.03484981, -0.18318318, -0.29350778, -0.12663999],
+          [ 0.28633794,  0.76515442, -0.18395521,  0.04850828, -0.42525050]]],
+
+
+        [[[-0.35616848,  0.21384183, -0.30207559, -0.24183397, -0.18685399],
+          [-0.10017283, -0.26885203, -0.00999357, -0.20930922, -0.30007312],
+          [ 0.04770488, -0.29103780,  0.41294131, -0.16971968,  0.12665810],
+          [-0.17194323,  0.01729790, -0.00445249, -0.09733340, -0.43409133],
+          [-0.20486255,  0.16031756, -0.08515637, -0.48493597, -0.27581355]]],
+
+
+        [[[-0.12680070,  0.45840842,  0.34614697,  0.01164691, -0.18574916],
+          [ 0.38707557, -0.22326174, -0.49643895, -0.20572264,  0.16056405],
+          [ 0.12451726, -0.24313389,  0.52626842, -0.06479061,  0.00620653],
+          [-0.50085860,  0.08915006, -0.18392627, -0.27886039, -0.44590169],
+          [-0.05520649, -0.00192035,  0.19382079,  0.30146438, -0.19075648]]],
+
+
+        [[[ 0.17200373,  0.36045110,  0.41303283, -0.05697197,  0.09817324],
+          [ 0.24160154,  0.20104299, -0.18491277,  0.30328605, -0.15703280],
+          [ 0.14609288, -0.35724214,  0.21076484, -0.39886394, -0.52864009],
+          [-0.22453904, -0.02393566,  0.22230516, -0.23590966,  0.08467520],
+          [ 0.10224124,  0.40317741, -0.02853043, -0.15255164, -0.10038172]]],
+
+
+        [[[ 0.25365898, -0.12408470,  0.03224292, -0.62302363, -0.00868563],
+          [-0.20751679, -0.27265713,  0.10152783, -0.07019686,  0.20044255],
+          [-0.01536619,  0.24629453, -0.50585532,  0.23426042,  0.34668776],
+          [ 0.37670568, -0.04776695,  0.13384424, -0.14209406, -0.57875556],
+          [-0.26221901, -0.30681297, -0.01673537,  0.17959179,  0.21828853]]],
+
+
+        [[[-0.16501173,  0.17561746,  0.07628912, -0.11273076,  0.13463901],
+          [ 0.11364105,  0.01849935, -0.31740916, -0.60119075,  0.04458283],
+          [-0.07207803,  0.12399440,  0.31883177, -0.04306261,  0.31809899],
+          [ 0.53678864,  0.46501875,  0.10381963, -0.00760704,  0.09934480],
+          [ 0.29437843, -0.22324999,  0.09065028, -0.09417098, -0.08439593]]],
+
+
+        [[[ 0.03022816,  0.12597114,  0.43907633,  0.34548521, -0.25947937],
+          [-0.45549130,  0.52134931, -0.32358417,  0.20811863, -0.34024143],
+          [-0.43153605, -0.25069806, -0.29741403, -0.22896214, -0.38898811],
+          [ 0.54590076, -0.12959005,  0.05260053, -0.17379124, -0.30745879],
+          [-0.37525591, -0.09658249, -0.17254332,  0.05943358, -0.03464231]]],
+
+
+        [[[ 0.20201388,  0.02919013, -0.08088612,  0.01559477,  0.17472650],
+          [ 0.02217738,  0.36532468,  0.09082818,  0.32516485,  0.62717056],
+          [-0.41841173, -0.20961802, -0.27907607, -0.53327650, -0.65651703],
+          [-0.03331180,  0.14785196,  0.18553858,  0.01868903, -0.59221572],
+          [ 0.06131181, -0.03520117, -0.85177898,  0.18555664,  0.01231959]]],
+
+
+        [[[-0.62316769,  0.08701386,  0.14838187, -0.23780005,  0.56156313],
+          [-0.15943550,  0.24376908,  0.34804633, -0.05670764, -0.17174038],
+          [-0.68133259, -0.22665225,  0.22788525,  0.81866211, -0.13602504],
+          [-0.25465700, -0.15599780, -0.28056905,  0.16332000,  0.44518515],
+          [-0.02113093, -0.30859464, -0.10784610,  0.37195674,  0.19204357]]]])
+通过print(state_dict.keys())打印的结果为['conv1.weight', 'conv1.bias', 'conv2.weight', 'conv2.bias', 'fc.weight', 'fc.bias']，对应我们模型结构：两个卷积层，一个全连接层。每一层都有一个权重项和偏置项。由于有两个卷积层，所以卷积的权重名称有对应的编号。
+
+paddle.ParamAttr可创建一个参数属性的对象，用户可设置参数的名称name、初始化方式initializer、学习率learning_rate、正则化规则regularizer、是否需要训练trainable、梯度裁剪方式need_clip、是否做模型平均do_model_average等属性。其参数初始化方式initializer默认值为None，表示权重参数采用Xavier初始化方式，偏置参数采用全0初始化方式。Xavier初始化方式可以缓解梯度消失的问题。
+
+下面简单介绍几个常用的权重初始化方法：
+
+XavierUniform、XavierNormal初始化函数用于保持所有层的梯度尺度几乎一致。
+Constant为常量初始化函数，用于权重初始化，通过输入的value值初始化输入变量。
+KaimingNormal、KaimingUniform方法来自Kaiming He，Xiangyu Zhang，Shaoqing Ren 和 Jian Sun所写的论文: Delving Deep into Rectifiers: Surpassing Human-Level Performance on ImageNet Classification。这是一个鲁棒性特别强的初始化方法，并且适应了非线性激活函数（rectifier nonlinearities）。
+Normal随机正态（高斯）分布初始化函数。
+下面我们通过paddle.ParamAttr基于常量初始化函数Constant完成全连接层的参数初始化，具体如下：
+
+In [7]
+import paddle
+from paddle.nn import Linear
+
+weight_attr = paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(3))
+#weight_attr = paddle.ParamAttr(initializer=paddle.nn.initializer.XavierNormal())
+
+fc = Linear(in_features=20, out_features=10,weight_attr=weight_attr)
+
+print(fc.state_dict())
+OrderedDict([('weight', Parameter containing:
+Tensor(shape=[20, 10], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
+       [[3., 3., 3., 3., 3., 3., 3., 3., 3., 3.],
+        [3., 3., 3., 3., 3., 3., 3., 3., 3., 3.],
+        [3., 3., 3., 3., 3., 3., 3., 3., 3., 3.],
+        [3., 3., 3., 3., 3., 3., 3., 3., 3., 3.],
+        [3., 3., 3., 3., 3., 3., 3., 3., 3., 3.],
+        [3., 3., 3., 3., 3., 3., 3., 3., 3., 3.],
+        [3., 3., 3., 3., 3., 3., 3., 3., 3., 3.],
+        [3., 3., 3., 3., 3., 3., 3., 3., 3., 3.],
+        [3., 3., 3., 3., 3., 3., 3., 3., 3., 3.],
+        [3., 3., 3., 3., 3., 3., 3., 3., 3., 3.],
+        [3., 3., 3., 3., 3., 3., 3., 3., 3., 3.],
+        [3., 3., 3., 3., 3., 3., 3., 3., 3., 3.],
+        [3., 3., 3., 3., 3., 3., 3., 3., 3., 3.],
+        [3., 3., 3., 3., 3., 3., 3., 3., 3., 3.],
+        [3., 3., 3., 3., 3., 3., 3., 3., 3., 3.],
+        [3., 3., 3., 3., 3., 3., 3., 3., 3., 3.],
+        [3., 3., 3., 3., 3., 3., 3., 3., 3., 3.],
+        [3., 3., 3., 3., 3., 3., 3., 3., 3., 3.],
+        [3., 3., 3., 3., 3., 3., 3., 3., 3., 3.],
+        [3., 3., 3., 3., 3., 3., 3., 3., 3., 3.]])), ('bias', Parameter containing:
+Tensor(shape=[10], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
+       [0., 0., 0., 0., 0., 0., 0., 0., 0., 0.]))])
+在我们的实际应用中，由于训练数据有限、数据获取较难、训练资源有限等原因，往往利用在大规模开源数据集上训练得到的模型参数作为我们自己模型的初始值（也称为预训练模型），这样可以加速网络训练、并得到较高精度。
+
+作业 2-3
+在手写数字识别任务上，哪种优化算法的效果最好？多大的学习率最优？（可通过Loss的下降趋势来判断）2.7 手写数字识别之资源配置
+从前几节的训练看，无论是房价预测任务还是MNIST手写字数字识别任务，训练好一个模型不会超过10分钟，主要原因是我们所使用的神经网络比较简单。但实际应用时，常会遇到更加复杂的机器学习或深度学习任务，需要运算速度更高的硬件（如GPU、NPU），甚至同时使用多个机器共同训练一个任务（多卡训练和多机训练）。本节我们依旧横向展开"横纵式"教学方法，如 图1 所示，探讨在手写数字识别任务中，通过资源配置的优化，提升模型训练效率的方法。
+
+
+
+
+
+图1：“横纵式”教学法 — 资源配置
+
+
+前提条件
+
+需要先进行数据处理、设计神经网络结构，代码与上一节保持一致，此处直接调用封装好的代码。
+
+In [1]
+import paddle
+from data_process import get_MNIST_dataloader
+from MNIST_network import MNIST
+
+train_loader, test_loader = get_MNIST_dataloader()
+2.7.1 程序运行的全局设备
+paddle.device.get_device功能返回当前程序运行的全局设备，返回的是一个类似于 cpu、 gpu:x、 xpu:x 或者 npu:x 字符串，如果没有设置全局设备，当cuda可用的时候返回 gpu:0 ，当cuda不可用的时候返回 cpu 。由于GPU通常为多个计算卡的结构，返回结果gpu:0中冒号后面的0代表0号卡。如果是4卡的GPU，编号分别为0、1、2、3。
+
+下面通过代码示例查看当前程序运行的全局设备：
+
+In [2]
+import paddle
+
+device = paddle.device.get_device()
+
+print("device:",device)
+device: gpu:0
+如果您启动项目时选用的是GPU，那么会输出device: gpu:0。
+
+在飞桨中，可通过place函数查看一个Tensor的设备位置。张量可能的设备位置有三种：CPU/GPU/固定内存，其中固定内存也称为不可分页内存或锁页内存， 其与GPU之间具有更高的读写效率，并且支持异步传输，这对网络整体性能会有进一步提升，但其缺点是分配空间过多时可能会降低主机系统的性能， 因为其减少了用于存储虚拟内存数据的可分页内存。
+
+如果想将CPU上的Tensor拷贝到GPU上，通过cuda(device_id=None, blocking=False)函数完成。如果当前Tensor已经在GPU上，且device_id为None，则不会发生任何拷贝。具体参数说明如下：
+
+device_id (int, optional) - 目标GPU的设备Id，默认为None，此时为当前Tensor所在的设备Id，如果当前Tensor不在GPU上，则为0。
+blocking (bool, optional) - 如果为False并且当前Tensor处于固定内存上，将会发生主机到设备端的异步拷贝。否则，会发生同步拷贝。默认为False。
+经过上述操作后，返回的Tensor不保留在原计算图中。
+
+下面我们在CPU上创建一个Tensor，获取其设备位置，然后将该Tensor拷贝到GPU上，再次获取设备位置：
+
+In [3]
+import paddle
+x = paddle.to_tensor(1.0, place=paddle.CPUPlace())
+print(x.place)        # CPUPlace
+
+y = x.cuda()
+print(y.place)        # CUDAPlace(0)
+CPUPlace
+CUDAPlace(0)
+W0901 16:57:38.553731   145 device_context.cc:447] Please NOTE: device: 0, GPU Compute Capability: 7.0, Driver API Version: 11.2, Runtime API Version: 10.1
+W0901 16:57:38.558326   145 device_context.cc:465] device: 0, cuDNN Version: 7.6.
+2.7.2 单GPU训练
+通过paddle.device.set_device API，设置在GPU上训练还是CPU上训练。
+
+paddle.device.set_device (device)
+
+参数 device (str)：此参数确定特定的运行设备，可以是cpu、 gpu:x或者是xpu:x。其中，x是GPU或XPU的编号。当device是cpu时， 程序在CPU上运行；当device是gpu:x时，程序在GPU上运行。
+
+In [5]
+import paddle.nn.functional as F
+
+#仅优化算法的设置有所差别
+def train(model):
+    #开启GPU
+    use_gpu = True
+    paddle.device.set_device('gpu:0') if use_gpu else paddle.device.set_device('cpu')
+    model.train()
+    
+    #设置不同初始学习率
+    opt = paddle.optimizer.Adam(learning_rate=0.01, parameters=model.parameters())
+    
+    EPOCH_NUM = 5
+    for epoch_id in range(EPOCH_NUM):
+        for batch_id, data in enumerate(train_loader()):
+            #准备数据，变得更加简洁
+            images, labels = data
+            images = paddle.to_tensor(images)
+            labels = paddle.to_tensor(labels)
+            
+            #前向计算的过程
+            predicts = model(images)
+            
+            #计算损失，取一个批次样本损失的平均值
+            loss = F.cross_entropy(predicts, labels)
+            avg_loss = paddle.mean(loss)
+            
+            #每训练了100批次的数据，打印下当前Loss的情况
+            if batch_id % 200 == 0:
+                print("epoch: {}, batch: {}, loss is: {}".format(epoch_id, batch_id, avg_loss.numpy()))
+            
+            #后向传播，更新参数的过程
+            avg_loss.backward()
+            opt.step()
+            opt.clear_grad()
+
+    #保存模型参数
+    paddle.save(model.state_dict(), 'mnist.pdparams')
+#创建模型    
+model = MNIST()
+#启动训练过程
+train(model)
+epoch: 0, batch: 0, loss is: [3.3544707]
+epoch: 0, batch: 200, loss is: [0.31601915]
+epoch: 0, batch: 400, loss is: [0.24964087]
+epoch: 0, batch: 600, loss is: [0.0728729]
+epoch: 0, batch: 800, loss is: [0.02721875]
+epoch: 1, batch: 0, loss is: [0.15583614]
+epoch: 1, batch: 200, loss is: [0.14065078]
+epoch: 1, batch: 400, loss is: [0.02253057]
+epoch: 1, batch: 600, loss is: [0.0052525]
+epoch: 1, batch: 800, loss is: [0.17545739]
+epoch: 2, batch: 0, loss is: [0.08051225]
+epoch: 2, batch: 200, loss is: [0.02657927]
+epoch: 2, batch: 400, loss is: [0.10907948]
+epoch: 2, batch: 600, loss is: [0.18941246]
+epoch: 2, batch: 800, loss is: [0.04511952]
+epoch: 3, batch: 0, loss is: [0.07731207]
+epoch: 3, batch: 200, loss is: [0.13170615]
+epoch: 3, batch: 400, loss is: [0.09188566]
+epoch: 3, batch: 600, loss is: [0.21778458]
+epoch: 3, batch: 800, loss is: [0.01946419]
+epoch: 4, batch: 0, loss is: [0.01339576]
+epoch: 4, batch: 200, loss is: [0.2479971]
+epoch: 4, batch: 400, loss is: [0.02366359]
+epoch: 4, batch: 600, loss is: [0.04403502]
+epoch: 4, batch: 800, loss is: [0.08038075]
+尝试把use_gpu设置成False，训练5个epoch需要的时间是GPU用时的10倍左右，可见GPU的并行能力要比CPU强大很多。
+
+2.7.3 分布式训练
+在工业实践中，很多较复杂的任务需要使用更强大的模型。强大模型加上海量的训练数据，经常导致模型训练耗时严重。比如在计算机视觉分类任务中，训练一个在ImageNet数据集上精度表现良好的模型，大概需要一周的时间，因为过程中我们需要不断尝试各种优化的思路和方案。如果每次训练均要耗时1周，这会大大降低模型迭代的速度。在机器资源充沛的情况下，建议采用分布式训练，大部分模型的训练时间可压缩到小时级别。
+
+分布式训练有两种基本的实现模式：模型并行和数据并行。
+
+2.7.3.1 模型并行
+模型并行是将一个网络模型拆分为多份，拆分后的模型分到多个设备上（GPU）训练，每个设备的训练数据是相同的。模型并行的实现模式可以节省内存，但是应用较为受限。
+
+模型并行的方式一般适用于如下两个场景：
+
+模型架构过大： 完整的模型无法放入单个GPU。如2012年ImageNet大赛的冠军模型AlexNet是模型并行的典型案例，由于当时GPU内存较小，单个GPU不足以承担AlexNet，因此研究者将AlexNet拆分为两部分放到两个GPU上并行训练。
+
+网络模型的结构设计相对独立： 当网络模型的设计结构可以并行化时，采用模型并行的方式。如在计算机视觉目标检测任务中，一些模型（如YOLO9000）的边界框回归和类别预测是独立的，可以将独立的部分放到不同的设备节点上完成分布式训练。
+
+2.7.3.2 数据并行
+数据并行与模型并行不同，数据并行每次读取多份数据，读取到的数据输入给多个设备（GPU）上的模型，每个设备上的模型是完全相同的，飞桨采用的就是这种方式。
+
+说明：
+
+当前GPU硬件技术快速发展，深度学习使用的主流GPU的内存已经足以满足大多数的网络模型需求，所以大多数情况下使用数据并行的方式。
+
+数据并行的方式与众人拾柴火焰高的道理类似，如果把训练数据比喻为砖头，把一个设备（GPU）比喻为一个人，那单GPU训练就是一个人在搬砖，多GPU训练就是多个人同时搬砖，每次搬砖的数量倍数增加，效率呈倍数提升。值得注意的是，每个设备的模型是完全相同的，但是输入数据不同，因此每个设备的模型计算出的梯度是不同的。如果每个设备的梯度只更新当前设备的模型，就会导致下次训练时，每个模型的参数都不相同。因此我们还需要一个梯度同步机制，保证每个设备的梯度是完全相同的。
+
+梯度同步有两种方式：PRC通信方式和NCCL2通信方式（Nvidia Collective multi-GPU Communication Library）。
+
+（1）PRC通信方式
+
+PRC通信方式通常用于CPU分布式训练，它有两个节点：参数服务器Parameter server和训练节点Trainer，结构如 图2 所示。
+
+
+
+图2：Pserver通信方式的结构
+
+
+parameter server收集来自每个设备的梯度更新信息，并计算出一个全局的梯度更新。Trainer用于训练，每个Trainer上的程序相同，但数据不同。当Parameter server收到来自Trainer的梯度更新请求时，统一更新模型的梯度。
+
+（2）NCCL2通信方式（Collective）
+
+当前飞桨的GPU分布式训练使用的是基于NCCL2的通信方式，结构如 图3 所示。
+
+
+
+图3：NCCL2通信方式的结构
+
+
+相比PRC通信方式，使用NCCL2（Collective通信方式）进行分布式训练，不需要启动Parameter server进程，每个Trainer进程保存一份完整的模型参数，在完成梯度计算之后通过Trainer之间的相互通信，Reduce梯度数据到所有节点的所有设备，然后每个节点在各自完成参数更新。
+
+飞桨提供了便利的数据并行训练方式，用户只需要对程序进行简单修改，即可实现在多GPU上并行训练（NCCL2的通信方式）。接下来将讲述如何将一个单机程序通过简单的改造，变成单机多卡程序。
+
+单机多卡程序通过如下两步改动即可完成：
+
+1）初始化并行环境。
+
+2）使用paddle.DataParallel封装模型。
+
+后续通过启动时候指定运行程序的多个GPU卡，飞桨会自动切分数据进行多卡分布式训练，加速训练过程。
+
+In [6]
+import paddle 
+import paddle.distributed as dist
+
+def train_multi_gpu(model):
+    # 修改1- 初始化并行环境
+    dist.init_parallel_env()
+    # 修改2- 增加paddle.DataParallel封装
+    model = paddle.DataParallel(model)
+    model.train()
+    
+    opt = paddle.optimizer.Adam(learning_rate=0.01, parameters=model.parameters())
+    EPOCH_NUM = 5
+    for epoch_id in range(EPOCH_NUM):
+        for batch_id, data in enumerate(train_loader()):
+            #准备数据，变得更加简洁
+            images, labels = data
+            images = paddle.to_tensor(images)
+            labels = paddle.to_tensor(labels)
+            #前向计算的过程
+            predicts = model(images)
+            #计算损失，取一个批次样本损失的平均值
+            loss = F.cross_entropy(predicts, labels)
+            avg_loss = paddle.mean(loss)
+            #每训练了100批次的数据，打印下当前Loss的情况
+            if batch_id % 200 == 0:
+                print("epoch: {}, batch: {}, loss is: {}".format(epoch_id, batch_id, avg_loss.numpy()))
+            #后向传播，更新参数的过程
+            avg_loss.backward()
+            opt.step()
+            opt.clear_grad()
+
+    #保存模型参数
+    paddle.save(model.state_dict(), 'mnist.pdparams')
+
+#创建模型    
+model = MNIST()
+#启动训练过程
+train_multi_gpu(model)
+/opt/conda/envs/python35-paddle120-env/lib/python3.7/site-packages/paddle/distributed/parallel.py:136: UserWarning: Currently not a parallel execution environment, paddle.distributed.init_parallel_env will not do anything.
+  "Currently not a parallel execution environment, paddle.distributed.init_parallel_env will not do anything."
+/opt/conda/envs/python35-paddle120-env/lib/python3.7/site-packages/paddle/fluid/dygraph/parallel.py:596: UserWarning: The program will return to single-card operation. Please check 1, whether you use spawn or fleetrun to start the program. 2, Whether it is a multi-card program. 3, Is the current environment multi-card.
+  warnings.warn("The program will return to single-card operation. "
+epoch: 0, batch: 0, loss is: [4.0620155]
+epoch: 0, batch: 200, loss is: [0.1424572]
+epoch: 0, batch: 400, loss is: [0.27101123]
+epoch: 0, batch: 600, loss is: [0.11927377]
+epoch: 0, batch: 800, loss is: [0.07573487]
+epoch: 1, batch: 0, loss is: [0.11767174]
+epoch: 1, batch: 200, loss is: [0.05888591]
+epoch: 1, batch: 400, loss is: [0.22377089]
+epoch: 1, batch: 600, loss is: [0.12019081]
+epoch: 1, batch: 800, loss is: [0.22480583]
+epoch: 2, batch: 0, loss is: [0.09455103]
+epoch: 2, batch: 200, loss is: [0.03133318]
+epoch: 2, batch: 400, loss is: [0.27478474]
+epoch: 2, batch: 600, loss is: [0.01249737]
+epoch: 2, batch: 800, loss is: [0.08645749]
+epoch: 3, batch: 0, loss is: [0.04523845]
+epoch: 3, batch: 200, loss is: [0.25270373]
+epoch: 3, batch: 400, loss is: [0.24493267]
+epoch: 3, batch: 600, loss is: [0.00318898]
+epoch: 3, batch: 800, loss is: [0.00807569]
+epoch: 4, batch: 0, loss is: [0.01736185]
+epoch: 4, batch: 200, loss is: [0.02390713]
+epoch: 4, batch: 400, loss is: [0.01427157]
+epoch: 4, batch: 600, loss is: [0.23381296]
+epoch: 4, batch: 800, loss is: [0.04849435]
+2.7.4 多GPU训练
+启动多GPU的训练，有两种方式：1）基于launch启动；2）基于spawn方式启动。
+
+2.7.4.1 基于launch方式启动
+需要在命令行中设置参数变量。打开终端，运行如下命令：
+
+单机单卡启动，默认使用第0号卡。
+
+$ python train.py
+单机多卡启动，默认使用当前可见的所有卡。
+
+$ python -m paddle.distributed.launch train.py
+单机多卡启动，设置当前使用的第0号和第1号卡。
+
+$ python -m paddle.distributed.launch --gpus '0,1' --log_dir ./mylog train.py
+$ export CUDA_VISIABLE_DEVICES='0,1'
+$ python -m paddle.distributed.launch train.py
+相关参数含义如下：
+
+paddle.distributed.launch：启动分布式运行。
+gpus：设置使用的GPU的序号（需要是多GPU卡的机器，通过命令watch nvidia-smi查看GPU的序号）。
+log_dir：存放训练的log，若不设置，每个GPU上的训练信息都会打印到屏幕。
+train.py：多GPU训练的程序，包含修改过的train_multi_gpu()函数。
+训练完成后，在指定的./mylog文件夹下会产生四个日志文件，其中worklog.0的内容如下：
+
+In [ ]
+grep: warning: GREP_OPTIONS is deprecated; please use an alias or script
+dev_id 0
+I1104 06:25:04.377323 31961 nccl_context.cc:88] worker: 127.0.0.1:6171 is not ready, will retry after 3 seconds...
+I1104 06:25:07.377645 31961 nccl_context.cc:127] init nccl context nranks: 3 local rank: 0 gpu id: 1↩
+W1104 06:25:09.097079 31961 device_context.cc:235] Please NOTE: device: 1, CUDA Capability: 61, Driver API Version: 10.1, Runtime API Version: 9.0
+W1104 06:25:09.104460 31961 device_context.cc:243] device: 1, cuDNN Version: 7.5.
+start data reader (trainers_num: 3, trainer_id: 0)
+epoch: 0, batch_id: 10, loss is: [0.47507238]
+epoch: 0, batch_id: 20, loss is: [0.25089613]
+epoch: 0, batch_id: 30, loss is: [0.13120805]
+epoch: 0, batch_id: 40, loss is: [0.12122715]
+epoch: 0, batch_id: 50, loss is: [0.07328521]
+epoch: 0, batch_id: 60, loss is: [0.11860339]
+epoch: 0, batch_id: 70, loss is: [0.08205047]
+epoch: 0, batch_id: 80, loss is: [0.08192863]
+epoch: 0, batch_id: 90, loss is: [0.0736289]
+epoch: 0, batch_id: 100, loss is: [0.08607423]
+start data reader (trainers_num: 3, trainer_id: 0)
+epoch: 1, batch_id: 10, loss is: [0.07032011]
+epoch: 1, batch_id: 20, loss is: [0.09687119]
+epoch: 1, batch_id: 30, loss is: [0.0307216]
+epoch: 1, batch_id: 40, loss is: [0.03884467]
+epoch: 1, batch_id: 50, loss is: [0.02801813]
+epoch: 1, batch_id: 60, loss is: [0.05751991]
+epoch: 1, batch_id: 70, loss is: [0.03721186]
+.....
+File "<ipython-input-4-badeaaa747bb>", line 1 grep: warning: GREP_OPTIONS is deprecated; please use an alias or script ^ SyntaxError: invalid syntax
+2.7.4.2 基于spawn方式启动
+Launch方式启动训练，是以文件为单位启动多进程，需要用户在启动时调用paddle.distributed.launch，对于进程的管理要求较高；飞桨最新版本中，增加了spawn启动方式，可以更好地控制进程，在日志打印、训练和退出时更加友好。spawn方式和launch方式仅在启动上有所区别。
+
+In [7]
+# 用法一：启动train多进程训练，默认使用所有可见的GPU卡。
+# 只传入函数，训练函数不需要任何参数
+if __name__ == '__main__':
+    dist.spawn(train)
+In [9]
+# 用法二：传入函数和参数
+# 当训练函数需要一些参数时，利用所有可见设备并行训练
+if __name__ == '__main__':
+    dist.spawn(train, args=(model,))
+In [ ]
+# 用法三：传入函数，参数和进程数目
+# 当训练函数需要参数，仅使用部分可见的设备并行训练
+# 如果当前机器有8张卡,并且均可见，下面的例子将使用0号和1号卡
+# 如果设置CUDA_VISIBLE_DEVICES=4,5,6,7，该例子将会使用4和5号卡
+if __name__ == '__main__':
+    dist.spawn(train, args=(model,), nprocs=2)
+In [ ]
+# 用法四：输入函数，参数，进程数目和gpus
+# 如果训练函数需要一些参数，并且只使用部分可见的设备用于并行训练，但是不能设置机器环境变量CUDA_VISIBLE_DEVICES，如该变量为None或所有卡，
+# 通过输入gpus来选择想要使用的卡。
+if __name__ == '__main__':
+    dist.spawn(train, args=(model,), nprocs=2, gpus='4,5')2.8 手写数字识别之训练调试与优化
+第2.7节我们研究了资源部署优化的方法，通过使用单GPU和分布式部署，提升模型训练的效率。本节我们依旧横向展开"横纵式"，如 图1 所示，探讨在手写数字识别任务中，为了保证模型的真实效果，在模型训练部分，对模型进行一些调试和优化的方法。
+
+
+图1：“横纵式”教学法 — 训练过程
+
+
+训练过程优化思路主要有如下五个关键环节：
+
+（1）计算分类准确率，观测模型训练效果
+
+交叉熵损失函数只能作为优化目标，无法直接准确衡量模型的训练效果。准确率可以直接衡量训练效果，但由于其离散性质，不适合做为损失函数优化神经网络。
+
+（2）检查模型训练过程，识别潜在问题
+
+如果模型的损失或者评估指标表现异常，通常需要打印模型每一层的输入和输出来定位问题，分析每一层的内容来获取错误的原因。
+
+（3）加入校验或测试，更好评价模型效果
+
+理想的模型训练结果是在训练集和验证集上均有较高的准确率，如果训练集的准确率低于验证集，说明网络训练程度不够；如果训练集的准确率高于验证集，可能是发生了过拟合现象。通过在优化目标中加入正则化项的办法，解决过拟合的问题。
+
+（4）加入正则化项，避免模型过拟合
+
+飞桨框架支持为整体参数加入正则化项，这是通常的做法。此外，飞桨框架也支持为某一层或某一部分的网络单独加入正则化项，以达到精细调整参数训练的效果。
+
+（5）可视化分析
+
+用户不仅可以通过打印或使用matplotlib库作图，飞桨还提供了更专业的可视化分析工具VisualDL，提供便捷的可视化分析方法。
+
+2.8.1 计算模型的分类准确率
+准确率是一个直观衡量分类模型效果的指标，由于这个指标是离散的，因此不适合作为损失来优化。通常情况下，交叉熵损失越小的模型，分类的准确率也越高。基于分类准确率，我们可以公平地比较两种损失函数的优劣，例如在【手写数字识别】之损失函数章节中均方误差和交叉熵的比较。
+
+使用飞桨提供的计算分类准确率API，可以直接计算准确率。
+
+class paddle.metric.Accuracy
+
+该API的输入参数input为预测的分类结果predict，输入参数label为数据真实的label。飞桨还提供了更多衡量模型效果的计算指标，详细可以查看paddle.meric包下面的API。
+
+在下述代码中，我们在模型前向计算过程forward函数中计算分类准确率，并在训练时打印每个批次样本的分类准确率。
+
+In [ ]
+import paddle
+from data_process import get_MNIST_dataloader
+
+train_loader, test_loader = get_MNIST_dataloader()
+In [ ]
+# 定义模型结构
+import paddle.nn.functional as F
+from paddle.nn import Conv2D, MaxPool2D, Linear
+
+# 多层卷积神经网络实现
+class MNIST(paddle.nn.Layer):
+     def __init__(self):
+         super(MNIST, self).__init__()
+         
+         # 定义卷积层，输出特征通道out_channels设置为20，卷积核的大小kernel_size为5，卷积步长stride=1，padding=2
+         self.conv1 = Conv2D(in_channels=1, out_channels=20, kernel_size=5, stride=1, padding=2)
+         # 定义池化层，池化核的大小kernel_size为2，池化步长为2
+         self.max_pool1 = MaxPool2D(kernel_size=2, stride=2)
+         # 定义卷积层，输出特征通道out_channels设置为20，卷积核的大小kernel_size为5，卷积步长stride=1，padding=2
+         self.conv2 = Conv2D(in_channels=20, out_channels=20, kernel_size=5, stride=1, padding=2)
+         # 定义池化层，池化核的大小kernel_size为2，池化步长为2
+         self.max_pool2 = MaxPool2D(kernel_size=2, stride=2)
+         # 定义一层全连接层，输出维度是10
+         self.fc = Linear(in_features=980, out_features=10)
+         
+   # 定义网络前向计算过程，卷积后紧接着使用池化层，最后使用全连接层计算最终输出
+   # 卷积层激活函数使用Relu，全连接层激活函数使用softmax
+     def forward(self, inputs, label):
+         x = self.conv1(inputs)
+         x = F.relu(x)
+         x = self.max_pool1(x)
+         x = self.conv2(x)
+         x = F.relu(x)
+         x = self.max_pool2(x)
+         x = paddle.reshape(x, [x.shape[0], 980])
+         x = self.fc(x)
+         if label is not None:
+             acc = paddle.metric.accuracy(input=x, label=label)
+             return x, acc
+         else:
+             return x
+
+#在使用GPU机器时，可以将use_gpu变量设置成True
+use_gpu = True
+paddle.set_device('gpu:0') if use_gpu else paddle.set_device('cpu')
+
+#仅优化算法的设置有所差别
+def train(model):
+    model = MNIST()
+    model.train()
+    
+    #四种优化算法的设置方案，可以逐一尝试效果
+    # opt = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
+    # opt = paddle.optimizer.Momentum(learning_rate=0.01, momentum=0.9, parameters=model.parameters())
+    # opt = paddle.optimizer.Adagrad(learning_rate=0.01, parameters=model.parameters())
+    opt = paddle.optimizer.Adam(learning_rate=0.01, parameters=model.parameters())
+    
+    EPOCH_NUM = 5
+    for epoch_id in range(EPOCH_NUM):
+        for batch_id, data in enumerate(train_loader()):
+            #准备数据
+            images, labels = data
+            images = paddle.to_tensor(images)
+            labels = paddle.to_tensor(labels)
+            
+            #前向计算的过程
+            predicts, acc = model(images, labels)
+            
+            #计算损失，取一个批次样本损失的平均值
+            loss = F.cross_entropy(predicts, labels)
+            avg_loss = paddle.mean(loss)
+            
+            #每训练了100批次的数据，打印下当前Loss的情况
+            if batch_id % 200 == 0:
+                print("epoch: {}, batch: {}, loss is: {}, acc is {}".format(epoch_id, batch_id, avg_loss.numpy(), acc.numpy()))
+                
+            #后向传播，更新参数，消除梯度的过程
+            avg_loss.backward()
+            opt.step()
+            opt.clear_grad()
+
+    #保存模型参数
+    paddle.save(model.state_dict(), 'mnist.pdparams')
+    
+#创建模型    
+model = MNIST()
+#启动训练过程
+train(model)
+W0905 14:35:13.571403    98 device_context.cc:447] Please NOTE: device: 0, GPU Compute Capability: 8.0, Driver API Version: 11.2, Runtime API Version: 11.2
+W0905 14:35:13.574612    98 device_context.cc:465] device: 0, cuDNN Version: 8.2.
+epoch: 0, batch: 0, loss is: [3.8877463], acc is [0.09375]
+epoch: 0, batch: 200, loss is: [0.205946], acc is [0.921875]
+epoch: 0, batch: 400, loss is: [0.01945284], acc is [1.]
+epoch: 0, batch: 600, loss is: [0.0915114], acc is [0.96875]
+epoch: 0, batch: 800, loss is: [0.07086004], acc is [0.984375]
+epoch: 1, batch: 0, loss is: [0.06174702], acc is [0.984375]
+epoch: 1, batch: 200, loss is: [0.02994888], acc is [0.984375]
+epoch: 1, batch: 400, loss is: [0.06212441], acc is [0.96875]
+epoch: 1, batch: 600, loss is: [0.11327725], acc is [0.96875]
+epoch: 1, batch: 800, loss is: [0.03650226], acc is [0.984375]
+epoch: 2, batch: 0, loss is: [0.03422514], acc is [0.984375]
+epoch: 2, batch: 200, loss is: [0.00483766], acc is [1.]
+epoch: 2, batch: 400, loss is: [0.023434], acc is [0.984375]
+epoch: 2, batch: 600, loss is: [0.1054302], acc is [0.984375]
+epoch: 2, batch: 800, loss is: [0.02677589], acc is [1.]
+epoch: 3, batch: 0, loss is: [0.0193211], acc is [1.]
+epoch: 3, batch: 200, loss is: [0.07209359], acc is [0.984375]
+epoch: 3, batch: 400, loss is: [0.07815815], acc is [0.96875]
+epoch: 3, batch: 600, loss is: [0.03945119], acc is [0.984375]
+epoch: 3, batch: 800, loss is: [0.17180261], acc is [0.9375]
+epoch: 4, batch: 0, loss is: [0.10021097], acc is [0.96875]
+epoch: 4, batch: 200, loss is: [0.04378257], acc is [0.984375]
+epoch: 4, batch: 400, loss is: [0.02809021], acc is [0.984375]
+epoch: 4, batch: 600, loss is: [0.04106805], acc is [0.984375]
+epoch: 4, batch: 800, loss is: [0.01189358], acc is [1.]
+2.8.2 检查模型训练过程，识别潜在训练问题
+使用飞桨动态图编程可以方便的查看和调试训练的执行过程。在网络定义的Forward函数中，可以打印每一层输入输出的尺寸，以及每层网络的参数。通过查看这些信息，不仅可以更好地理解训练的执行过程，还可以发现潜在问题，或者启发继续优化的思路。
+
+在下述程序中，使用check_shape变量控制是否打印“尺寸”，验证网络结构是否正确。使用check_content变量控制是否打印“内容值”，验证数据分布是否合理。假如在训练中发现中间层的部分输出持续为0，说明该部分的网络结构设计存在问题，没有充分利用。
+
+In [ ]
+import numpy as np
+import paddle.nn.functional as F
+
+# 定义模型结构
+class MNIST(paddle.nn.Layer):
+     def __init__(self):
+         super(MNIST, self).__init__()
+         
+         # 定义卷积层，输出特征通道out_channels设置为20，卷积核的大小kernel_size为5，卷积步长stride=1，padding=2
+         self.conv1 = Conv2D(in_channels=1, out_channels=20, kernel_size=5, stride=1, padding=2)
+         # 定义池化层，池化核的大小kernel_size为2，池化步长为2
+         self.max_pool1 = MaxPool2D(kernel_size=2, stride=2)
+         # 定义卷积层，输出特征通道out_channels设置为20，卷积核的大小kernel_size为5，卷积步长stride=1，padding=2
+         self.conv2 = Conv2D(in_channels=20, out_channels=20, kernel_size=5, stride=1, padding=2)
+         # 定义池化层，池化核的大小kernel_size为2，池化步长为2
+         self.max_pool2 = MaxPool2D(kernel_size=2, stride=2)
+         # 定义一层全连接层，输出维度是10
+         self.fc = Linear(in_features=980, out_features=10)
+     
+     #加入对每一层输入和输出的尺寸和数据内容的打印，根据check参数决策是否打印每层的参数和输出尺寸
+     # 卷积层激活函数使用Relu，全连接层激活函数使用softmax
+     def forward(self, inputs, label=None, check_shape=False, check_content=False):
+         # 给不同层的输出不同命名，方便调试
+         outputs1 = self.conv1(inputs)
+         outputs2 = F.relu(outputs1)
+         outputs3 = self.max_pool1(outputs2)
+         outputs4 = self.conv2(outputs3)
+         outputs5 = F.relu(outputs4)
+         outputs6 = self.max_pool2(outputs5)
+         outputs6 = paddle.reshape(outputs6, [outputs6.shape[0], -1])
+         outputs7 = self.fc(outputs6)
+         
+         # 选择是否打印神经网络每层的参数尺寸和输出尺寸，验证网络结构是否设置正确
+         if check_shape:
+             # 打印每层网络设置的超参数-卷积核尺寸，卷积步长，卷积padding，池化核尺寸
+             print("\n########## print network layer's superparams ##############")
+             print("conv1-- kernel_size:{}, padding:{}, stride:{}".format(self.conv1.weight.shape, self.conv1._padding, self.conv1._stride))
+             print("conv2-- kernel_size:{}, padding:{}, stride:{}".format(self.conv2.weight.shape, self.conv2._padding, self.conv2._stride))
+             #print("max_pool1-- kernel_size:{}, padding:{}, stride:{}".format(self.max_pool1.pool_size, self.max_pool1.pool_stride, self.max_pool1._stride))
+             #print("max_pool2-- kernel_size:{}, padding:{}, stride:{}".format(self.max_pool2.weight.shape, self.max_pool2._padding, self.max_pool2._stride))
+             print("fc-- weight_size:{}, bias_size_{}".format(self.fc.weight.shape, self.fc.bias.shape))
+             
+             # 打印每层的输出尺寸
+             print("\n########## print shape of features of every layer ###############")
+             print("inputs_shape: {}".format(inputs.shape))
+             print("outputs1_shape: {}".format(outputs1.shape))
+             print("outputs2_shape: {}".format(outputs2.shape))
+             print("outputs3_shape: {}".format(outputs3.shape))
+             print("outputs4_shape: {}".format(outputs4.shape))
+             print("outputs5_shape: {}".format(outputs5.shape))
+             print("outputs6_shape: {}".format(outputs6.shape))
+             print("outputs7_shape: {}".format(outputs7.shape))
+             # print("outputs8_shape: {}".format(outputs8.shape))
+             
+         # 选择是否打印训练过程中的参数和输出内容，可用于训练过程中的调试
+         if check_content:
+            # 打印卷积层的参数-卷积核权重，权重参数较多，此处只打印部分参数
+             print("\n########## print convolution layer's kernel ###############")
+             print("conv1 params -- kernel weights:", self.conv1.weight[0][0])
+             print("conv2 params -- kernel weights:", self.conv2.weight[0][0])
+
+             # 创建随机数，随机打印某一个通道的输出值
+             idx1 = np.random.randint(0, outputs1.shape[1])
+             idx2 = np.random.randint(0, outputs4.shape[1])
+             # 打印卷积-池化后的结果，仅打印batch中第一个图像对应的特征
+             print("\nThe {}th channel of conv1 layer: ".format(idx1), outputs1[0][idx1])
+             print("The {}th channel of conv2 layer: ".format(idx2), outputs4[0][idx2])
+             print("The output of last layer:", outputs7[0], '\n')
+            
+        # 如果label不是None，则计算分类精度并返回
+         if label is not None:
+             acc = paddle.metric.accuracy(input=F.softmax(outputs7), label=label)
+             return outputs7, acc
+         else:
+             return outputs7
+
+#在使用GPU机器时，可以将use_gpu变量设置成True
+use_gpu = True
+paddle.set_device('gpu:0') if use_gpu else paddle.set_device('cpu')    
+
+def train(model):
+    model = MNIST()
+    model.train()
+    
+    #四种优化算法的设置方案，可以逐一尝试效果
+    opt = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
+    # opt = paddle.optimizer.Momentum(learning_rate=0.01, momentum=0.9, parameters=model.parameters())
+    # opt = paddle.optimizer.Adagrad(learning_rate=0.01, parameters=model.parameters())
+    # opt = paddle.optimizer.Adam(learning_rate=0.01, parameters=model.parameters())
+    
+    EPOCH_NUM = 1
+    for epoch_id in range(EPOCH_NUM):
+        for batch_id, data in enumerate(train_loader()):
+            #准备数据，变得更加简洁
+            images, labels = data
+            images = paddle.to_tensor(images)
+            labels = paddle.to_tensor(labels)
+            
+            #前向计算的过程，同时拿到模型输出值和分类准确率
+            if batch_id == 0 and epoch_id==0:
+                # 打印模型参数和每层输出的尺寸
+                predicts, acc = model(images, labels, check_shape=True, check_content=False)
+            elif batch_id==401:
+                # 打印模型参数和每层输出的值
+                predicts, acc = model(images, labels, check_shape=False, check_content=True)
+            else:
+                predicts, acc = model(images, labels)
+            
+            #计算损失，取一个批次样本损失的平均值
+            loss = F.cross_entropy(predicts, labels)
+            avg_loss = paddle.mean(loss)
+            
+            #每训练了100批次的数据，打印下当前Loss的情况
+            if batch_id % 200 == 0:
+                print("epoch: {}, batch: {}, loss is: {}, acc is {}".format(epoch_id, batch_id, avg_loss.numpy(), acc.numpy()))
+            
+            #后向传播，更新参数的过程
+            avg_loss.backward()
+            opt.step()
+            opt.clear_grad()
+
+    #保存模型参数
+    paddle.save(model.state_dict(), 'mnist_test.pdparams')
+    
+#创建模型    
+model = MNIST()
+#启动训练过程
+train(model)
+
+print("Model has been saved.")
+
+########## print network layer's superparams ##############
+conv1-- kernel_size:[20, 1, 5, 5], padding:2, stride:[1, 1]
+conv2-- kernel_size:[20, 20, 5, 5], padding:2, stride:[1, 1]
+fc-- weight_size:[980, 10], bias_size_[10]
+
+########## print shape of features of every layer ###############
+inputs_shape: [64, 1, 28, 28]
+outputs1_shape: [64, 20, 28, 28]
+outputs2_shape: [64, 20, 28, 28]
+outputs3_shape: [64, 20, 14, 14]
+outputs4_shape: [64, 20, 14, 14]
+outputs5_shape: [64, 20, 14, 14]
+outputs6_shape: [64, 980]
+outputs7_shape: [64, 10]
+epoch: 0, batch: 0, loss is: [3.1953034], acc is [0.109375]
+epoch: 0, batch: 200, loss is: [0.37904966], acc is [0.875]
+epoch: 0, batch: 400, loss is: [0.16234186], acc is [0.984375]
+
+########## print convolution layer's kernel ###############
+conv1 params -- kernel weights: Tensor(shape=[5, 5], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
+       [[-0.06305157, -0.24847564, -0.63125026,  0.16255459,  0.05321766],
+        [ 0.27163783,  0.03359267, -0.16793424, -0.33206284,  0.24191348],
+        [-0.01796198,  0.59920996, -0.19074094,  0.30350232, -0.13594414],
+        [-0.17397462, -0.28396046,  0.37263221, -0.46014515,  0.00446801],
+        [-0.34503123,  0.21267484,  0.12081132,  0.25961810, -0.29448596]])
+conv2 params -- kernel weights: Tensor(shape=[5, 5], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
+       [[ 0.11260822,  0.07491580, -0.00697492,  0.03264738, -0.02312732],
+        [-0.13066202, -0.02998639,  0.01296079,  0.07414430, -0.07227730],
+        [ 0.00029436,  0.01291541,  0.06429236,  0.09252947, -0.00228186],
+        [-0.04436536, -0.02769227, -0.03541787, -0.04839976,  0.00429312],
+        [ 0.11987270, -0.00784257, -0.12884265,  0.03420701,  0.04363669]])
+
+The 13th channel of conv1 layer:  Tensor(shape=[28, 28], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
+       [[ 1.57676303,  1.95776081,  2.93419218,  2.93419218,  2.93419218,
+          2.93419218,  2.93419218,  2.93419218,  2.93419218,  2.93419218,
+          2.91577220,  2.16091633,  2.85406709,  2.99108791,  2.88631725,
+          2.31296110,  2.51821899,  2.93419218,  2.93419218,  2.93419218,
+          2.93419218,  2.93419218,  2.93419218,  2.93419218,  2.93419218,
+          2.93419218,  2.34963346,  1.86924219],
+        [ 1.08333588,  1.31429052,  2.38950634,  2.38950634,  2.38950634,
+          2.38950634,  2.38950634,  2.38950634,  2.38950634,  2.38950634,
+          2.14806008,  1.63691866,  1.36268055,  2.06326914,  1.71009457,
+          1.37815464,  1.70312703,  2.38950634,  2.38950634,  2.38950634,
+          2.38950634,  2.38950634,  2.38950634,  2.38950634,  2.38950634,
+          2.38950634,  1.93476129,  1.18708980],
+        [ 0.64583331,  1.00895524,  2.24922800,  2.24922800,  2.24922800,
+          2.24922800,  2.24922800,  2.24922800,  2.24922800,  2.24922800,
+          1.75884020,  1.10431981,  0.47565344,  0.36457911,  0.36683619,
+         -0.24916060,  1.07208598,  2.24922800,  2.24922800,  2.24922800,
+          2.24922800,  2.24922800,  2.24922800,  2.24922800,  2.24922800,
+          2.24922800,  1.97753549,  1.24340677],
+        [ 0.64583331,  1.00895524,  2.24922800,  2.24922800,  2.24922800,
+          2.24922800,  2.24922800,  2.24922800,  2.24922800,  2.15712929,
+          1.40624642,  1.10192263, -0.09191853,  1.02681065,  0.71380407,
+         -0.26615554,  0.88099998,  2.24922800,  2.24922800,  2.24922800,
+          2.24922800,  2.24922800,  2.24922800,  2.24922800,  2.24922800,
+          2.24922800,  1.97753549,  1.24340677],
+        [ 0.64583331,  1.00895524,  2.24922800,  2.24922800,  2.24922800,
+          2.24922800,  2.24922800,  2.24922800,  2.24922800,  1.91079450,
+          1.39493752,  0.80995464,  0.43273729,  1.30079973,  0.81360227,
+         -0.48203713,  1.00590825,  2.24922800,  2.24922800,  2.24922800,
+          2.24922800,  2.24922800,  2.24922800,  2.24922800,  2.24922800,
+          2.24922800,  1.97753549,  1.24340677],
+        [ 0.64583331,  1.00895524,  2.24922800,  2.24922800,  2.24922800,
+          2.24922800,  2.24922800,  2.24922800,  2.24922800,  1.52741933,
+          1.33734488,  0.25015768,  0.75935733,  0.79944927,  0.12423642,
+         -0.53146976,  1.37331486,  2.24922800,  2.24922800,  2.24922800,
+          2.24922800,  2.24922800,  2.24922800,  2.24922800,  2.24922800,
+          2.24922800,  1.97753549,  1.24340677],
+        [ 0.64583331,  1.00895524,  2.24922800,  2.24922800,  2.24922800,
+          2.24922800,  2.24922800,  2.24922800,  2.10493994,  1.42406499,
+          0.98795116,  0.28319174,  0.75196189,  0.68844956, -0.38671809,
+         -0.05348028,  1.60190117,  2.24922800,  2.24922800,  2.24922800,
+          2.24922800,  2.24922800,  2.24922800,  2.24922800,  2.24922800,
+          2.24922800,  1.97753549,  1.24340677],
+        [ 0.64583331,  1.00895524,  2.24922800,  2.24922800,  2.24922800,
+          2.24922800,  2.24922800,  2.24922800,  1.59816170,  1.50172329,
+          0.52018815,  0.77675128,  0.56555337,  0.43517646, -0.15623565,
+          0.64870793,  2.00834846,  2.24922800,  2.24922800,  2.24922800,
+          2.24922800,  2.24922800,  2.24922800,  2.24922800,  2.24922800,
+          2.24922800,  1.97753549,  1.24340677],
+        [ 0.64583331,  1.00895524,  2.24922800,  2.24922800,  2.24922800,
+          2.24922800,  2.24922800,  2.21238852,  1.48406279,  1.13921022,
+          0.24294551,  1.07210708,  0.85704976,  0.59652609,  0.02141927,
+          1.17699194,  2.11901641,  2.24922800,  2.23387814,  2.21114826,
+          2.26930523,  2.23946428,  2.24117732,  2.20948529,  2.24922800,
+          2.24922800,  1.97753549,  1.24340677],
+        [ 0.64583331,  1.00895524,  2.24922800,  2.24922800,  2.24922800,
+          2.24922800,  2.24922800,  1.94132292,  1.33064198,  0.96160889,
+          0.21429360,  0.90007955,  0.48074329,  0.37961787,  0.35840136,
+          1.84916151,  1.90650201,  1.87639749,  1.87668121,  1.90720320,
+          2.11476707,  1.70299637,  1.79109490,  1.78689849,  2.24922800,
+          2.24922800,  1.97753549,  1.24340677],
+        [ 0.64583331,  1.00895524,  2.24922800,  2.24922800,  2.24922800,
+          2.24922800,  2.19703865,  1.58767712,  1.44117045,  0.54131889,
+          1.27608991,  0.94705838,  0.78702778, -0.00550540,  0.66786128,
+          1.65697169,  1.68694818,  1.41576385,  1.02485096,  0.56235749,
+          0.82392734,  1.06733239,  1.19328809,  1.42852890,  2.10615444,
+          2.24922800,  1.97753549,  1.24340677],
+        [ 0.64583331,  1.00895524,  2.24922800,  2.24922800,  2.24922800,
+          2.24922800,  2.07781339,  1.34000683,  1.11889362,  0.27471933,
+          1.47623479,  0.85916406,  0.61680526,  0.18591230,  0.94179547,
+          1.60816967,  1.01923084,  0.26310733, -1.00871885, -1.64961648,
+         -1.74799502, -0.56500012, -0.11494534,  0.64425594,  1.75857580,
+          2.24922800,  1.97753549,  1.24340677],
+        [ 0.64583331,  1.00895524,  2.24922800,  2.24922800,  2.24922800,
+          2.24922800,  2.04542923,  1.15771973,  0.50759202,  0.51146859,
+          1.26443565,  0.49970740, -0.23061615,  0.20737801,  1.24177122,
+          0.61867607,  0.11704522, -1.18309247, -1.86321592, -2.64864135,
+         -2.15092444, -0.40615076, -0.21046360, -0.06328733,  1.38931787,
+          2.24922800,  1.97753549,  1.24340677],
+        [ 0.64583331,  1.00895524,  2.24922800,  2.24922800,  2.24922800,
+          2.24922800,  2.01895857,  1.20511019,  0.19213691,  0.96520102,
+          1.20993614, -0.10926627, -0.63769650,  0.26152697,  0.80889571,
+          0.43630484, -0.51190078, -1.01252317, -1.22141266, -0.92500377,
+         -1.27499378, -0.03566729, -0.63719290, -0.55815345,  0.86095756,
+          2.24922800,  1.97753549,  1.24340677],
+        [ 0.64583331,  1.00895524,  2.24922800,  2.24922800,  2.24922800,
+          2.24922800,  2.08103728,  1.33207846,  0.32678691,  1.50327933,
+          1.36101282, -0.01931037, -0.82734758,  0.71075332,  0.45209241,
+          0.18376869,  0.50610757, -0.05850399, -0.01595110,  0.70631558,
+          0.44142160,  0.49235320,  0.32371444, -0.64015907,  0.94643515,
+          2.24922800,  1.97753549,  1.24340677],
+        [ 0.64583331,  1.00895524,  2.24922800,  2.24922800,  2.24922800,
+          2.24922800,  2.13415837,  1.39917970,  0.40137079,  1.21047711,
+          1.64575052, -0.64026505, -0.95968014,  0.38196012,  0.30980483,
+          1.04383397,  1.30899382,  0.49489254,  0.75227344,  1.33670056,
+         -0.00538747,  0.33196372,  0.52780706, -0.27753383,  1.06427550,
+          2.24922800,  1.97753549,  1.24340677],
+        [ 0.64583331,  1.00895524,  2.24922800,  2.24922800,  2.24922800,
+          2.24922800,  2.13415837,  1.39917970,  0.40137079,  0.66018993,
+          1.25133741, -1.00954688, -1.06502783,  0.09167993, -0.38979325,
+          0.66176760,  0.72854674, -0.92299575, -1.21746361, -0.52190083,
+         -0.73357743,  0.63514787,  0.76305431,  0.40999895,  1.60275888,
+          2.24922800,  1.97753549,  1.24340677],
+        [ 0.64583331,  1.00895524,  2.24922800,  2.24922800,  2.24922800,
+          2.24922800,  2.26616645,  1.77271414,  0.20479760,  0.52118057,
+          0.40886799, -1.66344965, -1.43225205, -0.79355556, -0.34276375,
+         -0.14710836, -0.88605988, -2.64313841, -1.92538035, -1.09827638,
+          0.37350184,  1.08052373,  1.03908563,  1.05349636,  1.96428621,
+          2.24922800,  1.97753549,  1.24340677],
+        [ 0.64583331,  1.00895524,  2.24922800,  2.24922800,  2.24922800,
+          2.24922800,  2.31419444,  2.21908736,  0.71174645,  0.48882595,
+         -0.05339822, -2.11151147, -2.36140490, -2.28336740, -1.39570999,
+         -1.22161305, -1.81769896, -3.26750040, -2.58818293, -0.75749952,
+          0.85001963,  1.27202332,  0.82216030,  1.65936935,  2.16896486,
+          2.24922800,  1.97753549,  1.24340677],
+        [ 0.64583331,  1.00895524,  2.24922800,  2.24922800,  2.24922800,
+          2.24922800,  2.36872053,  2.60003138,  2.00372720,  1.63323927,
+          0.51079810, -1.55086589, -2.29566741, -2.87223315, -1.95501006,
+         -1.43932581, -1.91844594, -1.64706063, -0.69995457,  0.82944649,
+          1.68111157,  1.02165508,  1.56998527,  2.06415415,  2.24922800,
+          2.24922800,  1.97753549,  1.24340677],
+        [ 0.64583331,  1.00895524,  2.24922800,  2.24922800,  2.24922800,
+          2.24922800,  2.33795571,  2.69428396,  2.59896755,  2.45683622,
+          1.81639957,  0.76473731, -0.63784522, -1.01565254, -0.75288874,
+         -0.60530466, -0.16548987,  0.41499215,  1.10457957,  2.04215336,
+          1.71117508,  1.45834291,  1.94606030,  2.21686387,  2.24922800,
+          2.24922800,  1.97753549,  1.24340677],
+        [ 0.64583331,  1.00895524,  2.24922800,  2.24922800,  2.24922800,
+          2.24922800,  2.26502085,  2.41706991,  2.78577375,  2.63210535,
+          3.03460741,  2.82415676,  1.99927461,  1.06300223,  0.81216723,
+          0.63649660,  1.13787198,  2.06013227,  1.77976096,  2.06383300,
+          1.65551925,  1.88498139,  2.22074747,  2.24922800,  2.24922800,
+          2.24922800,  1.97753549,  1.24340677],
+        [ 0.64583331,  1.00895524,  2.24922800,  2.24922800,  2.24922800,
+          2.24922800,  2.24922800,  2.26358509,  2.49472618,  2.76062489,
+          2.85604525,  3.51348352,  3.18425798,  3.57339811,  3.66163349,
+          3.46294165,  3.42431688,  2.42982960,  1.75492239,  1.84449077,
+          2.07106829,  2.20650744,  2.24922800,  2.24922800,  2.24922800,
+          2.24922800,  1.97753549,  1.24340677],
+        [ 0.64583331,  1.00895524,  2.24922800,  2.24922800,  2.24922800,
+          2.24922800,  2.24922800,  2.24922800,  2.25784230,  2.42502165,
+          2.47021532,  2.85130930,  2.76395893,  2.81741858,  2.62606812,
+          2.21221232,  2.07615185,  1.76499319,  1.93476892,  2.20055056,
+          2.24663901,  2.24922800,  2.24922800,  2.24922800,  2.24922800,
+          2.24922800,  1.97753549,  1.24340677],
+        [ 0.64583331,  1.00895524,  2.24922800,  2.24922800,  2.24922800,
+          2.24922800,  2.24922800,  2.24922800,  2.24922800,  2.24922800,
+          2.24922800,  2.24922800,  2.24922800,  2.24922800,  2.24922800,
+          2.24922800,  2.24922800,  2.24922800,  2.24922800,  2.24922800,
+          2.24922800,  2.24922800,  2.24922800,  2.24922800,  2.24922800,
+          2.24922800,  1.97753549,  1.24340677],
+        [ 0.64583331,  1.00895524,  2.24922800,  2.24922800,  2.24922800,
+          2.24922800,  2.24922800,  2.24922800,  2.24922800,  2.24922800,
+          2.24922800,  2.24922800,  2.24922800,  2.24922800,  2.24922800,
+          2.24922800,  2.24922800,  2.24922800,  2.24922800,  2.24922800,
+          2.24922800,  2.24922800,  2.24922800,  2.24922800,  2.24922800,
+          2.24922800,  1.97753549,  1.24340677],
+        [ 0.35992554,  0.76722139,  1.66968119,  1.66968119,  1.66968119,
+          1.66968119,  1.66968119,  1.66968119,  1.66968119,  1.66968119,
+          1.66968119,  1.66968119,  1.66968119,  1.66968119,  1.66968119,
+          1.66968119,  1.66968119,  1.66968119,  1.66968119,  1.66968119,
+          1.66968119,  1.66968119,  1.66968119,  1.66968119,  1.66968119,
+          1.66968119,  1.78940856,  0.85205162],
+        [-0.05483250,  0.18032627,  0.98153108,  0.98153108,  0.98153108,
+          0.98153108,  0.98153108,  0.98153108,  0.98153108,  0.98153108,
+          0.98153108,  0.98153108,  0.98153108,  0.98153108,  0.98153108,
+          0.98153108,  0.98153108,  0.98153108,  0.98153108,  0.98153108,
+          0.98153108,  0.98153108,  0.98153108,  0.98153108,  0.98153108,
+          0.98153108,  1.14353645,  0.53895712]])
+The 7th channel of conv2 layer:  Tensor(shape=[14, 14], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
+       [[-0.25409293, -0.66168970, -0.57935500, -1.48868096, -2.08183002,
+         -1.33911610, -0.74000251, -0.34251714, -1.40074718, -0.97854525,
+         -0.62747008, -0.94004458, -0.28219345, -0.52894926],
+        [-0.94612551, -0.96789664, -1.04252434, -2.28471160, -2.93244386,
+         -1.15254617, -1.44253767, -1.68920648, -1.86377525, -0.58838648,
+         -0.94987696, -1.36445236, -0.43157944, -0.42930213],
+        [-1.29878235, -1.86798871, -2.97600794, -4.11553526, -3.98651719,
+         -2.19571638, -1.66379070, -3.86760926, -3.39402866, -2.33286405,
+         -3.08091831, -3.35946941, -1.95624983, -2.03968048],
+        [-1.25153780, -2.00924492, -3.10734200, -4.17039061, -2.85374713,
+         -2.35836053, -2.48791742, -3.99124980, -2.43252587, -2.60203409,
+         -3.37870812, -3.81301546, -2.30629706, -2.15978932],
+        [-1.25153780, -2.25941300, -3.56285596, -4.12135220, -2.61398172,
+         -2.01441407, -3.88805604, -3.53329206, -2.72950196, -2.62689519,
+         -3.27135372, -3.52888918, -2.05309367, -2.07169461],
+        [-1.25153780, -2.31347370, -4.03132582, -3.64191508, -1.99087465,
+         -2.01349831, -4.07500315, -3.62071300, -3.24732065, -2.62092948,
+         -2.39937925, -2.86055875, -1.75934064, -2.15174699],
+        [-1.25153780, -2.35707831, -4.15621328, -2.94248891, -2.62050080,
+         -3.30646777, -4.16481829, -2.22495556, -3.25909591, -3.71963644,
+         -4.39155340, -3.47604108, -2.06854749, -1.71817923],
+        [-1.25153780, -2.04121304, -3.36076713, -2.31935883, -2.85418010,
+         -3.33775401, -2.46969557, -1.31438315, -2.29970503, -2.37273550,
+         -2.13134480, -3.25790668, -1.81248474, -1.24302518],
+        [-1.25153780, -1.83585656, -2.24215269, -1.57363570, -1.95731795,
+         -2.12606430, -1.61913550,  0.14625229,  0.27586699, -1.37613702,
+         -1.33491802, -2.76888037, -1.42816770, -1.05165148],
+        [-1.25153780, -1.93787241, -1.84526920, -1.61436665, -1.42682374,
+         -1.92163455, -2.19398141, -0.40832922, -0.17310615, -2.74810195,
+         -2.24085212, -1.73986506, -1.39752030, -1.34790802],
+        [-1.25153780, -2.09485412, -2.13443446, -1.89533794, -2.16656852,
+         -1.67623806, -1.39321041, -2.12497044, -1.68666756, -0.61848652,
+         -0.86989164, -1.81202853, -1.64037287, -1.46816218],
+        [-1.26170301, -2.15879202, -2.71437883, -2.31642056, -2.33664322,
+         -2.05490804, -0.38206375, -0.96394157, -1.01726711, -0.82931221,
+         -2.17020512, -3.18042541, -1.98610282, -2.19472075],
+        [-1.22878456, -1.67976415, -2.47030187, -2.81020093, -2.20034075,
+         -2.44192600, -1.74215555, -2.20093799, -2.35509777, -2.68591475,
+         -2.79559898, -3.14834046, -1.86138821, -1.74327803],
+        [-1.04598784, -1.27783942, -1.65321481, -2.04070377, -1.74800372,
+         -1.64281404, -1.77025723, -2.43671608, -2.63182092, -2.57449508,
+         -2.40219665, -2.12657714, -1.32194364, -0.84718376]])
+The output of last layer: Tensor(shape=[10], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
+       [ 1.99937165, -2.35289693,  1.69447994, -3.71930218,  3.57330942,
+        -1.01217377, 10.14804745, -2.20251369,  0.63025647,  0.63188559]) 
+
+epoch: 0, batch: 600, loss is: [0.0758898], acc is [0.984375]
+epoch: 0, batch: 800, loss is: [0.10419124], acc is [0.953125]
+Model has been saved.
+2.8.3 加入校验或测试，更好评价模型效果
+在训练过程中，我们会发现模型在训练样本集上的损失在不断减小。但这是否代表模型在未来的应用场景上依然有效？为了验证模型的有效性，通常将样本集合分成三份，训练集、校验集和测试集。
+
+训练集 ：用于训练模型的参数，即训练过程中主要完成的工作。
+验证集 ：用于对模型超参数的选择，比如网络结构的调整、正则化项权重的选择等。
+测试集 ：用于模拟模型在应用后的真实效果。因为测试集没有参与任何模型优化或参数训练的工作，所以它对模型来说是完全未知的样本。在不以校验数据优化网络结构或模型超参数时，校验数据和测试数据的效果是类似的，均更真实的反映模型效果。
+如下程序读取上一步训练保存的模型参数，读取校验数据集，并测试模型在校验数据集上的效果。
+
+In [ ]
+def evaluation(model):
+    print('start evaluation .......')
+    # 定义预测过程
+    params_file_path = 'mnist.pdparams'
+    # 加载模型参数
+    param_dict = paddle.load(params_file_path)
+    model.load_dict(param_dict)
+
+    model.eval()
+    eval_loader = test_loader
+
+    acc_set = []
+    avg_loss_set = []
+    for batch_id, data in enumerate(eval_loader()):
+        images, labels = data
+        images = paddle.to_tensor(images)
+        labels = paddle.to_tensor(labels)
+        predicts, acc = model(images, labels)
+        loss = F.cross_entropy(input=predicts, label=labels)
+        avg_loss = paddle.mean(loss)
+        acc_set.append(float(acc.numpy()))
+        avg_loss_set.append(float(avg_loss.numpy()))
+    
+    #计算多个batch的平均损失和准确率
+    acc_val_mean = np.array(acc_set).mean()
+    avg_loss_val_mean = np.array(avg_loss_set).mean()
+
+    print('loss={}, acc={}'.format(avg_loss_val_mean, acc_val_mean))
+
+model = MNIST()
+evaluation(model)
+start evaluation .......
+loss=0.06925583740963806, acc=0.9796974522292994
+从测试的效果来看，模型在验证集上依然有98.6%的准确率，证明它是有预测效果的。
+
+2.8.4 加入正则化项，避免模型过拟合
+2.8.4.1 过拟合现象
+对于样本量有限、但需要使用强大模型的复杂任务，模型很容易出现过拟合的表现，即在训练集上的损失小，在验证集或测试集上的损失较大，如 图2 所示。
+
+
+
+图2：过拟合现象，训练误差不断降低，但测试误差先降后增
+
+
+反之，如果模型在训练集和测试集上均损失较大，则称为欠拟合。过拟合表示模型过于敏感，学习到了训练数据中的一些误差，而这些误差并不是真实的泛化规律（可推广到测试集上的规律）。欠拟合表示模型还不够强大，还没有很好的拟合已知的训练样本，更别提测试样本了。因为欠拟合情况容易观察和解决，只要训练loss不够好，就不断使用更强大的模型即可，因此实际中我们更需要处理好过拟合的问题。
+
+2.8.4.2 导致过拟合原因
+造成过拟合的原因是模型过于敏感，而训练数据量太少或其中的噪音太多。如图3 所示，理想的回归模型是一条坡度较缓的抛物线，欠拟合的模型只拟合出一条直线，显然没有捕捉到真实的规律，但过拟合的模型拟合出存在很多拐点的抛物线，显然是过于敏感，也没有正确表达真实规律。
+
+
+
+图3：回归模型的过拟合，理想和欠拟合状态的表现
+
+
+如图4 所示，理想的分类模型是一条半圆形的曲线，欠拟合用直线作为分类边界，显然没有捕捉到真实的边界，但过拟合的模型拟合出很扭曲的分类边界，虽然对所有的训练数据正确分类，但对一些较为个例的样本所做出的妥协，高概率不是真实的规律。
+
+
+
+图4：分类模型的欠拟合，理想和过拟合状态的表现
+
+
+2.8.4.3 过拟合的成因与防控
+为了更好的理解过拟合的成因，可以参考侦探定位罪犯的案例逻辑，如 图5 所示。
+
+
+
+图5：侦探定位罪犯与模型假设示意
+
+
+对于这个案例，假设侦探也会犯错，通过分析发现可能的原因：
+
+（1）情况1：罪犯证据存在错误，依据错误的证据寻找罪犯肯定是缘木求鱼。
+
+（2）情况2：搜索范围太大的同时证据太少，导致符合条件的候选（嫌疑人）太多，无法准确定位罪犯。
+
+那么侦探解决这个问题的方法有两种：或者缩小搜索范围（比如假设该案件只能是熟人作案），或者寻找更多的证据。归结到深度学习中，假设模型也会犯错，通过分析发现可能的原因：
+
+（1） 情况1：训练数据存在噪音，导致模型学到了噪音，而不是真实规律。
+
+（2）情况2：使用强大模型（表示空间大）的同时训练数据太少，导致在训练数据上表现良好的候选假设太多，锁定了一个“虚假正确”的假设。
+
+对于情况1，我们使用数据清洗和修正来解决。 对于情况2，我们或者限制模型表示能力，或者收集更多的训练数据。而清洗训练数据中的错误，或收集更多的训练数据往往是一句“正确的废话”，在任何时候我们都想获得更多更高质量的数据。在实际项目中，更快、更低成本可控制过拟合的方法，只有限制模型的表示能力。
+
+（1）正则化项
+
+为了防止模型过拟合，在没有扩充样本量的可能下，只能降低模型的复杂度，可以通过限制参数的数量或可能取值（参数值尽量小）实现。具体来说，在模型的优化目标（损失）中人为加入对参数规模的惩罚项。当参数越多或取值越大时，该惩罚项就越大。通过调整惩罚项的权重系数，可以使模型在“尽量减少训练损失”和“保持模型的泛化能力”之间取得平衡。泛化能力表示模型在没有见过的样本上依然有效。通过调整正则化项的权重，可以灵活设置模型参数量和训练集上的损失，从而限制模型能力，避免过拟合。
+
+飞桨支持为所有参数加上统一的正则化项，也支持为特定的参数添加正则化项。前者的实现如下代码所示，仅在优化器中设置weight_decay参数即可实现。使用参数coeff调节正则化项的权重，权重越大时，对模型复杂度的惩罚越高。
+
+In [ ]
+def train(model):
+    model.train() 
+
+    #各种优化算法均可以加入正则化项，避免过拟合，参数regularization_coeff调节正则化项的权重
+    opt = paddle.optimizer.Adam(learning_rate=0.01, weight_decay=paddle.regularizer.L2Decay(coeff=1e-5), parameters=model.parameters())           
+
+    EPOCH_NUM = 5
+    for epoch_id in range(EPOCH_NUM):
+        for batch_id, data in enumerate(train_loader()):
+            #准备数据，变得更加简洁
+            images, labels = data
+            images = paddle.to_tensor(images)
+            labels = paddle.to_tensor(labels)
+            
+            #前向计算的过程，同时拿到模型输出值和分类准确率
+            predicts, acc = model(images, labels)
+            #计算损失，取一个批次样本损失的平均值
+            loss = F.cross_entropy(predicts, labels)
+            avg_loss = paddle.mean(loss)
+            
+            #每训练了100批次的数据，打印下当前Loss的情况
+            if batch_id % 200 == 0:
+                print("epoch: {}, batch: {}, loss is: {}, acc is {}".format(epoch_id, batch_id, avg_loss.numpy(), acc.numpy()))
+            
+            #后向传播，更新参数的过程
+            avg_loss.backward()
+            opt.step()
+            opt.clear_grad()
+
+    #保存模型参数
+    paddle.save(model.state_dict(), 'mnist_regul.pdparams')
+
+model = MNIST()
+train(model)
+epoch: 0, batch: 0, loss is: [3.8228705], acc is [0.09375]
+epoch: 0, batch: 200, loss is: [0.07062767], acc is [0.953125]
+epoch: 0, batch: 400, loss is: [0.20030954], acc is [0.953125]
+epoch: 0, batch: 600, loss is: [0.09374876], acc is [0.96875]
+epoch: 0, batch: 800, loss is: [0.11705722], acc is [0.96875]
+epoch: 1, batch: 0, loss is: [0.03310085], acc is [0.984375]
+epoch: 1, batch: 200, loss is: [0.23823069], acc is [0.921875]
+epoch: 1, batch: 400, loss is: [0.16660276], acc is [0.953125]
+epoch: 1, batch: 600, loss is: [0.05889388], acc is [0.96875]
+epoch: 1, batch: 800, loss is: [0.02532948], acc is [0.984375]
+epoch: 2, batch: 0, loss is: [0.06577589], acc is [0.96875]
+epoch: 2, batch: 200, loss is: [0.08367997], acc is [0.984375]
+epoch: 2, batch: 400, loss is: [0.02483967], acc is [0.984375]
+epoch: 2, batch: 600, loss is: [0.07011881], acc is [0.984375]
+epoch: 2, batch: 800, loss is: [0.04859509], acc is [0.984375]
+epoch: 3, batch: 0, loss is: [0.048246], acc is [0.984375]
+epoch: 3, batch: 200, loss is: [0.10438204], acc is [0.953125]
+epoch: 3, batch: 400, loss is: [0.06529065], acc is [0.96875]
+epoch: 3, batch: 600, loss is: [0.06141832], acc is [0.984375]
+epoch: 3, batch: 800, loss is: [0.06838188], acc is [0.984375]
+epoch: 4, batch: 0, loss is: [0.06753349], acc is [0.96875]
+epoch: 4, batch: 200, loss is: [0.12629655], acc is [0.953125]
+epoch: 4, batch: 400, loss is: [0.03575302], acc is [0.984375]
+epoch: 4, batch: 600, loss is: [0.07168289], acc is [0.953125]
+epoch: 4, batch: 800, loss is: [0.00869386], acc is [1.]
+In [ ]
+def evaluation(model):
+    print('start evaluation .......')
+    # 定义预测过程
+    params_file_path = 'mnist_regul.pdparams'
+    # 加载模型参数
+    param_dict = paddle.load(params_file_path)
+    model.load_dict(param_dict)
+
+    model.eval()
+    eval_loader = test_loader
+
+    acc_set = []
+    avg_loss_set = []
+    for batch_id, data in enumerate(eval_loader()):
+        images, labels = data
+        images = paddle.to_tensor(images)
+        labels = paddle.to_tensor(labels)
+        predicts, acc = model(images, labels)
+        loss = F.cross_entropy(input=predicts, label=labels)
+        avg_loss = paddle.mean(loss)
+        acc_set.append(float(acc.numpy()))
+        avg_loss_set.append(float(avg_loss.numpy()))
+    
+    #计算多个batch的平均损失和准确率
+    acc_val_mean = np.array(acc_set).mean()
+    avg_loss_val_mean = np.array(avg_loss_set).mean()
+
+    print('loss={}, acc={}'.format(avg_loss_val_mean, acc_val_mean))
+
+model = MNIST()
+evaluation(model)
+start evaluation .......
+loss=0.07935721310694216, acc=0.9776074840764332
+（2）暂退法Dropout
+
+除了在优化目标中加入正则化项之外，神经网络模型也通常使用暂退法来改善过拟合问题。暂退法指在训练神经网络过程中随机丢掉一部分神经元来减少神经网络复杂度，它实现方法很简单：在每次迭代训练中，以一定概率随机屏蔽每一层中若干神经元，用余下神经元所构成网络来继续训练。
+
+图6是暂退法示意图，左边是完整的神经网络，右边是应用了暂退法之后的网络结构。应用暂退法之后，会将标了×的神经元从网络中删除，让它们不向后面的层传递信号。在学习过程中，丢弃哪些神经元是随机决定，因此模型不会过度依赖某些神经元，能一定程度上抑制过拟合。
+
+
+
+图6：暂退法示意图
+
+
+通过飞桨paddle.nn.functional.dropout API可以实现Dropout操作。其输入是一个张量，即需要丢弃数据的神经元参数。该API的axis参数用于指定对输入张量进行Dropout操作的轴。默认为None，即对输入张量x中的任意元素，以丢弃概率p随机将一些元素输出置0。若参数axis不为None，则以一定的概率从图像特征或语音序列中丢弃掉整个通道。
+
+需要注意的是，在测试时，应用整个训练好的模型，不需要Dropout。所以存在训练和测试不一致的问题。通过paddle.nn.functional.dropout API的mode参数可以选择丢弃单元的方式，有两种upscale_in_train和downscale_in_infer，默认是upscale_in_train。计算方法如下:
+
+upscale_in_train, 在训练时增大输出结果。
+train: out = input * mask / ( 1.0 - p )
+inference: out = input
+downscale_in_infer, 在预测时减小输出结果
+train: out = input * mask
+inference: out = input * (1.0 - p)
+示例：
+
+假定x是形状为2*3的2维张量:
+[[1 2 3]
+[4 5 6]]
+在对x做dropout时，程序会先生成一个和x相同形状的mask张量，mask中每个元素的值为0或1。
+每个元素的具体值，则是依据丢弃概率从伯努利分布中随机采样得到。
+比如，我们可能得到下面这样一个2*3的mask:
+[[0 1 0]
+[1 0 1]]
+将输入x和生成的mask点积，就得到了随机丢弃部分元素之后的结果:
+[[0 2 0]
+[4 0 6]]
+假定dropout的概率使用默认值，即 `p=0.5 ，若mode参数使用默认值，即 mode='upscale_in_train' ，
+则在训练阶段，最终增大后的结果为:
+[[0 4 0 ]
+[8 0 12]]
+在测试阶段，输出跟输入一致:
+[[1 2 3]
+[4 5 6]]
+若参数mode设置为'downscale_in_infer'，则训练阶段的输出为:
+[[0 2 0]
+[4 0 6]]
+在测试阶段，缩小后的输出为:
+[[0.5 1.  1.5]
+[2.  2.5 3. ]]
+下面我们在MINIST模型全连接层后面加入Dropout运算，查看模型训练和评估情况。
+
+In [ ]
+import paddle.nn.functional as F
+# 定义模型结构
+class MNIST(paddle.nn.Layer):
+     def __init__(self):
+         super(MNIST, self).__init__()
+         
+         # 定义卷积层，输出特征通道out_channels设置为20，卷积核的大小kernel_size为5，卷积步长stride=1，padding=2
+         self.conv1 = Conv2D(in_channels=1, out_channels=20, kernel_size=5, stride=1, padding=2)
+         # 定义池化层，池化核的大小kernel_size为2，池化步长为2
+         self.max_pool1 = MaxPool2D(kernel_size=2, stride=2)
+         # 定义卷积层，输出特征通道out_channels设置为20，卷积核的大小kernel_size为5，卷积步长stride=1，padding=2
+         self.conv2 = Conv2D(in_channels=20, out_channels=20, kernel_size=5, stride=1, padding=2)
+         # 定义池化层，池化核的大小kernel_size为2，池化步长为2
+         self.max_pool2 = MaxPool2D(kernel_size=2, stride=2)
+         # 定义一层全连接层，输出维度是10
+         self.fc = Linear(in_features=980, out_features=10)
+     
+     #加入对每一层输入和输出的尺寸和数据内容的打印，根据check参数决策是否打印每层的参数和输出尺寸
+     # 卷积层激活函数使用Relu，全连接层激活函数使用softmax
+     def forward(self, inputs, label=None, check_shape=False, check_content=False, training=True):
+         # 给不同层的输出不同命名，方便调试
+         outputs1 = self.conv1(inputs)
+         outputs2 = F.relu(outputs1)
+         outputs3 = self.max_pool1(outputs2)
+         outputs4 = self.conv2(outputs3)
+         outputs5 = F.relu(outputs4)
+         outputs6 = self.max_pool2(outputs5)
+         outputs6 = paddle.reshape(outputs6, [outputs6.shape[0], -1])
+         outputs7 = self.fc(outputs6)
+
+         # 对FC层实施Dropout，指定第0维，丢弃概率为p
+         outputs = paddle.nn.functional.dropout(outputs7,p=0.01, axis=0,training=training)
+
+        # 如果label不是None，则计算分类精度并返回
+         if label is not None:
+             acc = paddle.metric.accuracy(input=F.softmax(outputs), label=label)
+             return outputs, acc
+         else:
+             return outputs
+
+def evaluation(model):
+    print('start evaluation .......')
+    # 定义预测过程
+    params_file_path = 'mnist_regul.pdparams'
+    # 加载模型参数
+    param_dict = paddle.load(params_file_path)
+    model.load_dict(param_dict)
+
+    model.eval()
+    eval_loader = test_loader
+
+    acc_set = []
+    avg_loss_set = []
+    for batch_id, data in enumerate(eval_loader()):
+        images, labels = data
+        images = paddle.to_tensor(images)
+        labels = paddle.to_tensor(labels)
+        predicts, acc = model(images, labels, training=False)
+        loss = F.cross_entropy(input=predicts, label=labels)
+        avg_loss = paddle.mean(loss)
+        acc_set.append(float(acc.numpy()))
+        avg_loss_set.append(float(avg_loss.numpy()))
+    
+    #计算多个batch的平均损失和准确率
+    acc_val_mean = np.array(acc_set).mean()
+    avg_loss_val_mean = np.array(avg_loss_set).mean()
+
+    print('loss={}, acc={}'.format(avg_loss_val_mean, acc_val_mean))
+
+model = MNIST()
+train(model)
+evaluation(model)
+epoch: 0, batch: 0, loss is: [4.0833225], acc is [0.0625]
+epoch: 0, batch: 200, loss is: [0.07072611], acc is [1.]
+epoch: 0, batch: 400, loss is: [0.13994697], acc is [0.96875]
+epoch: 0, batch: 600, loss is: [0.10909003], acc is [0.953125]
+epoch: 0, batch: 800, loss is: [0.1880557], acc is [0.96875]
+epoch: 1, batch: 0, loss is: [0.22570458], acc is [0.9375]
+epoch: 1, batch: 200, loss is: [0.2441752], acc is [0.921875]
+epoch: 1, batch: 400, loss is: [0.0100032], acc is [1.]
+epoch: 1, batch: 600, loss is: [0.04133706], acc is [0.984375]
+epoch: 1, batch: 800, loss is: [0.09127815], acc is [0.953125]
+epoch: 2, batch: 0, loss is: [0.05260755], acc is [0.96875]
+epoch: 2, batch: 200, loss is: [0.13855451], acc is [0.953125]
+epoch: 2, batch: 400, loss is: [0.05476269], acc is [0.984375]
+epoch: 2, batch: 600, loss is: [0.30577427], acc is [0.921875]
+epoch: 2, batch: 800, loss is: [0.31517652], acc is [0.9375]
+epoch: 3, batch: 0, loss is: [0.06088963], acc is [0.984375]
+epoch: 3, batch: 200, loss is: [0.31231248], acc is [0.890625]
+epoch: 3, batch: 400, loss is: [0.06767518], acc is [0.953125]
+epoch: 3, batch: 600, loss is: [0.23350264], acc is [0.953125]
+epoch: 3, batch: 800, loss is: [0.09101789], acc is [0.9375]
+epoch: 4, batch: 0, loss is: [0.327186], acc is [0.9375]
+epoch: 4, batch: 200, loss is: [0.10689706], acc is [0.953125]
+epoch: 4, batch: 400, loss is: [0.0439705], acc is [0.96875]
+epoch: 4, batch: 600, loss is: [0.10556765], acc is [0.96875]
+epoch: 4, batch: 800, loss is: [0.04112688], acc is [0.984375]
+start evaluation .......
+loss=0.07983270236202011, acc=0.9721337579617835
+2.8.5 可视化分析
+训练模型时，经常需要观察模型的评价指标，分析模型的优化过程，以确保训练是有效的。之前的分析，我们往往使用打印Loss的方式，这比较起来并不够方便，也不够美观。将模型训练效果等数据可视化作图可选用两种工具：Matplotlib库和VisualDL。
+
+Matplotlib库：Matplotlib库是Python中使用的最多的2D图形绘图库，它有一套完全仿照MATLAB的函数形式的绘图接口，使用轻量级的PLT库（Matplotlib）作图是非常简单的。
+
+VisualDL：如果期望使用更加专业的作图工具，可以尝试VisualDL，飞桨可视化分析工具。VisualDL能够有效地展示飞桨在运行过程中的计算图、各种指标变化趋势和数据信息。
+
+2.8.5.1 使用Matplotlib库绘制损失随训练下降的曲线图
+将训练的批次编号作为X轴坐标，该批次的训练损失作为Y轴坐标。
+
+训练开始前，声明两个列表变量存储对应的批次编号(iters=[])和训练损失(losses=[])。
+iters=[]
+losses=[]
+for epoch_id in range(EPOCH_NUM):
+	"""start to training"""
+随着训练的进行，将iter和losses两个列表填满。
+import paddle.nn.functional as F
+
+iters=[]
+losses=[]
+for epoch_id in range(EPOCH_NUM):
+	for batch_id, data in enumerate(train_loader()):
+        images, labels = data
+        predicts, acc = model(images, labels)
+        loss = F.cross_entropy(predicts, label = labels.astype('int64'))
+        avg_loss = paddle.mean(loss)
+        # 累计迭代次数和对应的loss
+   	iters.append(batch_id + epoch_id*len(list(train_loader()))
+	losses.append(avg_loss)
+训练结束后，将两份数据以参数形式导入PLT的横纵坐标。
+plt.xlabel("iter", fontsize=14)，plt.ylabel("loss", fontsize=14)
+最后，调用plt.plot()函数即可完成作图。
+plt.plot(iters, losses,color='red',label='train loss') 
+详细代码如下：
+
+In [ ]
+#引入matplotlib库
+import matplotlib.pyplot as plt
+
+def train(model):
+    model.train()
+    
+    opt = paddle.optimizer.Adam(learning_rate=0.001, parameters=model.parameters())
+    
+    EPOCH_NUM = 10
+    iter=0
+    iters=[]
+    losses=[]
+    for epoch_id in range(EPOCH_NUM):
+        for batch_id, data in enumerate(train_loader()):
+            #准备数据，变得更加简洁
+            images, labels = data
+            images = paddle.to_tensor(images)
+            labels = paddle.to_tensor(labels)
+            
+            #前向计算的过程，同时拿到模型输出值和分类准确率
+            predicts, acc = model(images, labels)
+            #计算损失，取一个批次样本损失的平均值
+            loss = F.cross_entropy(predicts, labels)
+            avg_loss = paddle.mean(loss)
+            
+            #每训练了100批次的数据，打印下当前Loss的情况
+            if batch_id % 100 == 0:
+                print("epoch: {}, batch: {}, loss is: {}, acc is {}".format(epoch_id, batch_id, avg_loss.numpy(), acc.numpy()))
+                iters.append(iter)
+                losses.append(avg_loss.numpy())
+                iter = iter + 100
+            
+            #后向传播，更新参数的过程
+            avg_loss.backward()
+            opt.step()
+            opt.clear_grad()
+            
+    #保存模型参数
+    paddle.save(model.state_dict(), 'mnist.pdparams')
+    
+    return iters, losses
+    
+model = MNIST()
+iters, losses = train(model)
+/opt/conda/envs/python35-paddle120-env/lib/python3.7/site-packages/matplotlib/__init__.py:107: DeprecationWarning: Using or importing the ABCs from 'collections' instead of from 'collections.abc' is deprecated, and in 3.8 it will stop working
+  from collections import MutableMapping
+/opt/conda/envs/python35-paddle120-env/lib/python3.7/site-packages/matplotlib/rcsetup.py:20: DeprecationWarning: Using or importing the ABCs from 'collections' instead of from 'collections.abc' is deprecated, and in 3.8 it will stop working
+  from collections import Iterable, Mapping
+/opt/conda/envs/python35-paddle120-env/lib/python3.7/site-packages/matplotlib/colors.py:53: DeprecationWarning: Using or importing the ABCs from 'collections' instead of from 'collections.abc' is deprecated, and in 3.8 it will stop working
+  from collections import Sized
+epoch: 0, batch: 0, loss is: [3.1067178], acc is [0.125]
+epoch: 0, batch: 100, loss is: [0.25948155], acc is [0.921875]
+epoch: 0, batch: 200, loss is: [0.2500265], acc is [0.875]
+epoch: 0, batch: 300, loss is: [0.32702205], acc is [0.890625]
+epoch: 0, batch: 400, loss is: [0.08103482], acc is [0.96875]
+epoch: 0, batch: 500, loss is: [0.06687161], acc is [0.96875]
+epoch: 0, batch: 600, loss is: [0.18538702], acc is [0.96875]
+epoch: 0, batch: 700, loss is: [0.03654159], acc is [0.984375]
+epoch: 0, batch: 800, loss is: [0.08613557], acc is [0.953125]
+epoch: 0, batch: 900, loss is: [0.22812071], acc is [0.953125]
+epoch: 1, batch: 0, loss is: [0.07222291], acc is [0.984375]
+epoch: 1, batch: 100, loss is: [0.02553116], acc is [1.]
+epoch: 1, batch: 200, loss is: [0.0458651], acc is [0.984375]
+epoch: 1, batch: 300, loss is: [0.04750751], acc is [0.96875]
+epoch: 1, batch: 400, loss is: [0.13080978], acc is [0.9375]
+epoch: 1, batch: 500, loss is: [0.05986679], acc is [0.96875]
+epoch: 1, batch: 600, loss is: [0.09602988], acc is [0.96875]
+epoch: 1, batch: 700, loss is: [0.02209184], acc is [0.984375]
+epoch: 1, batch: 800, loss is: [0.12519023], acc is [0.953125]
+epoch: 1, batch: 900, loss is: [0.0548395], acc is [0.984375]
+epoch: 2, batch: 0, loss is: [0.01888405], acc is [0.984375]
+epoch: 2, batch: 100, loss is: [0.01061364], acc is [1.]
+epoch: 2, batch: 200, loss is: [0.01641076], acc is [1.]
+epoch: 2, batch: 300, loss is: [0.04714124], acc is [0.984375]
+epoch: 2, batch: 400, loss is: [0.03082629], acc is [0.984375]
+epoch: 2, batch: 500, loss is: [0.00466085], acc is [1.]
+epoch: 2, batch: 600, loss is: [0.03611708], acc is [0.984375]
+epoch: 2, batch: 700, loss is: [0.05530573], acc is [0.96875]
+epoch: 2, batch: 800, loss is: [0.00915828], acc is [1.]
+epoch: 2, batch: 900, loss is: [0.25927716], acc is [0.9375]
+epoch: 3, batch: 0, loss is: [0.0053554], acc is [1.]
+epoch: 3, batch: 100, loss is: [0.07718084], acc is [0.984375]
+epoch: 3, batch: 200, loss is: [0.00630295], acc is [1.]
+epoch: 3, batch: 300, loss is: [0.03986048], acc is [0.984375]
+epoch: 3, batch: 400, loss is: [0.02118919], acc is [0.984375]
+epoch: 3, batch: 500, loss is: [0.03682797], acc is [0.984375]
+epoch: 3, batch: 600, loss is: [0.03871151], acc is [0.984375]
+epoch: 3, batch: 700, loss is: [0.03735166], acc is [0.984375]
+epoch: 3, batch: 800, loss is: [0.05122434], acc is [0.984375]
+epoch: 3, batch: 900, loss is: [0.12567255], acc is [0.953125]
+epoch: 4, batch: 0, loss is: [0.04418489], acc is [0.984375]
+epoch: 4, batch: 100, loss is: [0.07105179], acc is [0.96875]
+epoch: 4, batch: 200, loss is: [0.04843749], acc is [1.]
+epoch: 4, batch: 300, loss is: [0.01279272], acc is [1.]
+epoch: 4, batch: 400, loss is: [0.06105454], acc is [0.96875]
+epoch: 4, batch: 500, loss is: [0.00378267], acc is [1.]
+epoch: 4, batch: 600, loss is: [0.10478292], acc is [0.984375]
+epoch: 4, batch: 700, loss is: [0.04497121], acc is [0.96875]
+epoch: 4, batch: 800, loss is: [0.03848124], acc is [0.984375]
+epoch: 4, batch: 900, loss is: [0.03699018], acc is [0.984375]
+epoch: 5, batch: 0, loss is: [0.08881403], acc is [0.96875]
+epoch: 5, batch: 100, loss is: [0.05881751], acc is [0.96875]
+epoch: 5, batch: 200, loss is: [0.21269678], acc is [0.96875]
+epoch: 5, batch: 300, loss is: [0.00178465], acc is [1.]
+epoch: 5, batch: 400, loss is: [0.0332341], acc is [0.984375]
+epoch: 5, batch: 500, loss is: [0.06160853], acc is [0.953125]
+epoch: 5, batch: 600, loss is: [0.14453772], acc is [0.96875]
+epoch: 5, batch: 700, loss is: [0.00417219], acc is [1.]
+epoch: 5, batch: 800, loss is: [0.04299318], acc is [0.984375]
+epoch: 5, batch: 900, loss is: [0.00138008], acc is [1.]
+epoch: 6, batch: 0, loss is: [0.04620922], acc is [0.984375]
+epoch: 6, batch: 100, loss is: [0.0113104], acc is [1.]
+epoch: 6, batch: 200, loss is: [0.00134751], acc is [1.]
+epoch: 6, batch: 300, loss is: [0.08195499], acc is [0.96875]
+epoch: 6, batch: 400, loss is: [0.03043568], acc is [0.984375]
+epoch: 6, batch: 500, loss is: [0.0022357], acc is [1.]
+epoch: 6, batch: 600, loss is: [0.01159343], acc is [1.]
+epoch: 6, batch: 700, loss is: [0.01395741], acc is [1.]
+epoch: 6, batch: 800, loss is: [0.00451766], acc is [1.]
+epoch: 6, batch: 900, loss is: [0.05307096], acc is [0.984375]
+epoch: 7, batch: 0, loss is: [0.04470662], acc is [0.984375]
+epoch: 7, batch: 100, loss is: [0.06655695], acc is [0.96875]
+epoch: 7, batch: 200, loss is: [0.14185987], acc is [0.953125]
+epoch: 7, batch: 300, loss is: [0.00670908], acc is [1.]
+epoch: 7, batch: 400, loss is: [0.05755713], acc is [0.96875]
+epoch: 7, batch: 500, loss is: [0.07407703], acc is [0.96875]
+epoch: 7, batch: 600, loss is: [0.02188261], acc is [0.984375]
+epoch: 7, batch: 700, loss is: [0.03728414], acc is [0.984375]
+epoch: 7, batch: 800, loss is: [0.002194], acc is [1.]
+epoch: 7, batch: 900, loss is: [0.00173302], acc is [1.]
+epoch: 8, batch: 0, loss is: [0.03637866], acc is [0.984375]
+epoch: 8, batch: 100, loss is: [0.03711292], acc is [0.984375]
+epoch: 8, batch: 200, loss is: [0.05949993], acc is [0.96875]
+epoch: 8, batch: 300, loss is: [0.03926613], acc is [0.984375]
+epoch: 8, batch: 400, loss is: [0.00787284], acc is [1.]
+epoch: 8, batch: 500, loss is: [0.03721984], acc is [0.984375]
+epoch: 8, batch: 600, loss is: [0.00696141], acc is [1.]
+epoch: 8, batch: 700, loss is: [0.04140003], acc is [1.]
+epoch: 8, batch: 800, loss is: [0.00694878], acc is [1.]
+epoch: 8, batch: 900, loss is: [0.11778253], acc is [0.953125]
+epoch: 9, batch: 0, loss is: [0.05109105], acc is [0.984375]
+epoch: 9, batch: 100, loss is: [0.04488494], acc is [0.984375]
+epoch: 9, batch: 200, loss is: [0.0014867], acc is [1.]
+epoch: 9, batch: 300, loss is: [0.0414663], acc is [0.984375]
+epoch: 9, batch: 400, loss is: [0.03694858], acc is [0.984375]
+epoch: 9, batch: 500, loss is: [0.1676015], acc is [0.921875]
+epoch: 9, batch: 600, loss is: [0.07532958], acc is [1.]
+epoch: 9, batch: 700, loss is: [0.03605957], acc is [0.984375]
+epoch: 9, batch: 800, loss is: [0.00361382], acc is [1.]
+epoch: 9, batch: 900, loss is: [0.07275441], acc is [0.96875]
+In [ ]
+#画出训练过程中Loss的变化曲线
+plt.figure()
+plt.title("train loss", fontsize=24)
+plt.xlabel("iter", fontsize=14)
+plt.ylabel("loss", fontsize=14)
+plt.plot(iters, losses,color='red',label='train loss') 
+plt.grid()
+plt.show()
+/opt/conda/envs/python35-paddle120-env/lib/python3.7/site-packages/matplotlib/cbook/__init__.py:2349: DeprecationWarning: Using or importing the ABCs from 'collections' instead of from 'collections.abc' is deprecated, and in 3.8 it will stop working
+  if isinstance(obj, collections.Iterator):
+/opt/conda/envs/python35-paddle120-env/lib/python3.7/site-packages/matplotlib/cbook/__init__.py:2366: DeprecationWarning: Using or importing the ABCs from 'collections' instead of from 'collections.abc' is deprecated, and in 3.8 it will stop working
+  return list(data) if isinstance(data, collections.MappingView) else data
+
+<Figure size 432x288 with 1 Axes>
+2.8.5.2 使用VisualDL可视化分析
+VisualDL是飞桨可视化分析工具，以丰富的图表呈现训练参数变化趋势、数据样本、模型结构、PR曲线、ROC曲线、高维数据分布等。帮助用户清晰直观地理解深度学习模型训练过程及模型结构，进而实现高效的模型调优。与PLT库相比，VisualDL是更适合深度学习建模使用的可视化工具。
+
+推荐安装方式：
+
+In [ ]
+# 安装VisualDL
+!python -m pip install visualdl -i https://mirror.baidu.com/pypi/simple
+使用方式：
+
+VisualDL将训练过程中的数据、参数等信息储存至日志文件中后，启动面板即可查看可视化结果。
+
+1. 记录日志
+
+VisualDL的后端提供了Python SDK，可通过LogWriter定制一个日志记录器，接口如下：
+
+class LogWriter(logdir=None,
+                max_queue=10,
+                flush_secs=120,
+                filename_suffix='',
+                display_name='',
+                file_name='',
+                **kwargs)
+In [ ]
+#引入VisualDL库，并设定保存作图数据的文件位置
+from visualdl import LogWriter
+log_writer = LogWriter(logdir="./log")
+
+def train(model):
+    model.train()
+    
+    opt = paddle.optimizer.Adam(learning_rate=0.001, parameters=model.parameters())
+    
+    EPOCH_NUM = 10
+    iter = 0
+    for epoch_id in range(EPOCH_NUM):
+        for batch_id, data in enumerate(train_loader()):
+            #准备数据，变得更加简洁
+            images, labels = data
+            images = paddle.to_tensor(images)
+            labels = paddle.to_tensor(labels)
+            
+            #前向计算的过程，同时拿到模型输出值和分类准确率
+            predicts, avg_acc = model(images, labels)
+            #计算损失，取一个批次样本损失的平均值
+            loss = F.cross_entropy(predicts, labels)
+            avg_loss = paddle.mean(loss)
+            
+            #每训练了100批次的数据，打印下当前Loss的情况
+            if batch_id % 100 == 0:
+                print("epoch: {}, batch: {}, loss is: {}, acc is {}".format(epoch_id, batch_id, avg_loss.numpy(), avg_acc.numpy()))
+                log_writer.add_scalar(tag = 'acc', step = iter, value = avg_acc.numpy())
+                log_writer.add_scalar(tag = 'loss', step = iter, value = avg_loss.numpy())
+                iter = iter + 100
+
+            #后向传播，更新参数的过程
+            avg_loss.backward()
+            opt.step()
+            opt.clear_grad()
+
+    #保存模型参数
+    paddle.save(model.state_dict(), 'mnist.pdparams')
+    
+model = MNIST()
+train(model)
+epoch: 0, batch: 0, loss is: [3.8976812], acc is [0.125]
+epoch: 0, batch: 100, loss is: [0.24494784], acc is [0.921875]
+epoch: 0, batch: 200, loss is: [0.26378095], acc is [0.921875]
+epoch: 0, batch: 300, loss is: [0.22967383], acc is [0.890625]
+epoch: 0, batch: 400, loss is: [0.10998115], acc is [0.96875]
+epoch: 0, batch: 500, loss is: [0.08789912], acc is [0.96875]
+epoch: 0, batch: 600, loss is: [0.06132765], acc is [1.]
+epoch: 0, batch: 700, loss is: [0.25114188], acc is [0.921875]
+epoch: 0, batch: 800, loss is: [0.13402592], acc is [0.9375]
+epoch: 0, batch: 900, loss is: [0.05303773], acc is [0.984375]
+epoch: 1, batch: 0, loss is: [0.05307241], acc is [0.984375]
+epoch: 1, batch: 100, loss is: [0.04524157], acc is [0.984375]
+epoch: 1, batch: 200, loss is: [0.04033208], acc is [0.984375]
+epoch: 1, batch: 300, loss is: [0.04626527], acc is [0.984375]
+epoch: 1, batch: 400, loss is: [0.01260194], acc is [1.]
+epoch: 1, batch: 500, loss is: [0.06764157], acc is [0.96875]
+epoch: 1, batch: 600, loss is: [0.09227023], acc is [0.96875]
+epoch: 1, batch: 700, loss is: [0.07254598], acc is [0.96875]
+epoch: 1, batch: 800, loss is: [0.1025949], acc is [0.953125]
+epoch: 1, batch: 900, loss is: [0.00322359], acc is [1.]
+epoch: 2, batch: 0, loss is: [0.02664608], acc is [1.]
+epoch: 2, batch: 100, loss is: [0.04558125], acc is [1.]
+epoch: 2, batch: 200, loss is: [0.05848975], acc is [0.984375]
+epoch: 2, batch: 300, loss is: [0.00495513], acc is [1.]
+epoch: 2, batch: 400, loss is: [0.05350171], acc is [0.984375]
+epoch: 2, batch: 500, loss is: [0.19869223], acc is [0.953125]
+epoch: 2, batch: 600, loss is: [0.02840726], acc is [1.]
+epoch: 2, batch: 700, loss is: [0.03301933], acc is [0.984375]
+epoch: 2, batch: 800, loss is: [0.13366723], acc is [0.9375]
+epoch: 2, batch: 900, loss is: [0.1324224], acc is [0.96875]
+epoch: 3, batch: 0, loss is: [0.06951778], acc is [0.984375]
+epoch: 3, batch: 100, loss is: [0.1105411], acc is [0.953125]
+epoch: 3, batch: 200, loss is: [0.05074476], acc is [0.984375]
+epoch: 3, batch: 300, loss is: [0.05399875], acc is [0.96875]
+epoch: 3, batch: 400, loss is: [0.0281655], acc is [0.984375]
+epoch: 3, batch: 500, loss is: [0.04794339], acc is [0.984375]
+epoch: 3, batch: 600, loss is: [0.06038764], acc is [0.96875]
+epoch: 3, batch: 700, loss is: [0.00618259], acc is [1.]
+epoch: 3, batch: 800, loss is: [0.05110959], acc is [0.96875]
+epoch: 3, batch: 900, loss is: [0.06365701], acc is [0.984375]
+epoch: 4, batch: 0, loss is: [0.00282368], acc is [1.]
+epoch: 4, batch: 100, loss is: [0.05808049], acc is [0.96875]
+epoch: 4, batch: 200, loss is: [0.02086016], acc is [1.]
+epoch: 4, batch: 300, loss is: [0.05191016], acc is [0.96875]
+epoch: 4, batch: 400, loss is: [0.07787728], acc is [0.96875]
+epoch: 4, batch: 500, loss is: [0.01578094], acc is [1.]
+epoch: 4, batch: 600, loss is: [0.11052053], acc is [0.953125]
+epoch: 4, batch: 700, loss is: [0.07256945], acc is [0.96875]
+epoch: 4, batch: 800, loss is: [0.0027408], acc is [1.]
+epoch: 4, batch: 900, loss is: [0.00524686], acc is [1.]
+epoch: 5, batch: 0, loss is: [0.07757618], acc is [0.984375]
+epoch: 5, batch: 100, loss is: [0.00286792], acc is [1.]
+epoch: 5, batch: 200, loss is: [0.01645469], acc is [0.984375]
+epoch: 5, batch: 300, loss is: [0.09424831], acc is [0.984375]
+epoch: 5, batch: 400, loss is: [0.04262222], acc is [0.984375]
+epoch: 5, batch: 500, loss is: [0.00665575], acc is [1.]
+epoch: 5, batch: 600, loss is: [0.07796165], acc is [0.96875]
+epoch: 5, batch: 700, loss is: [0.04314306], acc is [0.984375]
+epoch: 5, batch: 800, loss is: [0.00889275], acc is [1.]
+epoch: 5, batch: 900, loss is: [0.03673035], acc is [0.984375]
+epoch: 6, batch: 0, loss is: [0.03669504], acc is [1.]
+epoch: 6, batch: 100, loss is: [0.12926766], acc is [0.9375]
+epoch: 6, batch: 200, loss is: [0.05695032], acc is [0.96875]
+epoch: 6, batch: 300, loss is: [0.00497303], acc is [1.]
+epoch: 6, batch: 400, loss is: [0.00785465], acc is [1.]
+epoch: 6, batch: 500, loss is: [0.03658008], acc is [0.984375]
+epoch: 6, batch: 600, loss is: [0.00893693], acc is [1.]
+epoch: 6, batch: 700, loss is: [0.03663061], acc is [0.984375]
+epoch: 6, batch: 800, loss is: [0.12396517], acc is [0.953125]
+epoch: 6, batch: 900, loss is: [0.00987581], acc is [1.]
+epoch: 7, batch: 0, loss is: [0.00513407], acc is [1.]
+epoch: 7, batch: 100, loss is: [0.00193752], acc is [1.]
+epoch: 7, batch: 200, loss is: [0.04616558], acc is [0.984375]
+epoch: 7, batch: 300, loss is: [0.0307204], acc is [0.984375]
+epoch: 7, batch: 400, loss is: [0.03893897], acc is [0.984375]
+epoch: 7, batch: 500, loss is: [0.06653114], acc is [0.984375]
+epoch: 7, batch: 600, loss is: [0.03551684], acc is [0.96875]
+epoch: 7, batch: 700, loss is: [0.04304881], acc is [0.984375]
+epoch: 7, batch: 800, loss is: [0.0891945], acc is [0.984375]
+epoch: 7, batch: 900, loss is: [0.04357353], acc is [0.984375]
+epoch: 8, batch: 0, loss is: [0.00033292], acc is [1.]
+epoch: 8, batch: 100, loss is: [0.00028144], acc is [1.]
+epoch: 8, batch: 200, loss is: [0.00887554], acc is [1.]
+epoch: 8, batch: 300, loss is: [0.05767912], acc is [0.96875]
+epoch: 8, batch: 400, loss is: [0.03788796], acc is [0.984375]
+epoch: 8, batch: 500, loss is: [0.03715087], acc is [0.984375]
+epoch: 8, batch: 600, loss is: [0.04141467], acc is [0.984375]
+epoch: 8, batch: 700, loss is: [0.03894728], acc is [0.984375]
+epoch: 8, batch: 800, loss is: [0.0720887], acc is [0.96875]
+epoch: 8, batch: 900, loss is: [0.00421867], acc is [1.]
+epoch: 9, batch: 0, loss is: [0.03633005], acc is [0.984375]
+epoch: 9, batch: 100, loss is: [0.00124391], acc is [1.]
+epoch: 9, batch: 200, loss is: [0.01813628], acc is [0.984375]
+epoch: 9, batch: 300, loss is: [0.00529736], acc is [1.]
+epoch: 9, batch: 400, loss is: [0.12610942], acc is [0.9375]
+epoch: 9, batch: 500, loss is: [0.02882565], acc is [0.984375]
+epoch: 9, batch: 600, loss is: [0.03620434], acc is [0.984375]
+epoch: 9, batch: 700, loss is: [0.00019643], acc is [1.]
+epoch: 9, batch: 800, loss is: [0.04434416], acc is [0.984375]
+epoch: 9, batch: 900, loss is: [0.07912198], acc is [0.984375]
+2. 启动面板
+
+共有两种启动方式：
+
+在命令行启动：使用命令行启动VisualDL面板，命令格式如下
+
+visualdl --logdir <dir_1, dir_2, ... , dir_n> --model <model_file> --host <host> --port <port> --cache-timeout <cache_timeout> --language <language> --public-path <public_path> --api-only
+
+In [12]
+!visualdl --logdir /home/aistudio/log --port 8080
+在Python脚本中启动：支持在Python脚本中启动VisualDL面板，接口如下
+
+visualdl.server.app.run(logdir,
+                        model="path/to/model",
+                        host="127.0.0.1",
+                        port=8080,
+                        cache_timeout=20,
+                        language=None,
+                        public_path=None,
+                        api_only=False,
+                        open_browser=False)
+In [ ]
+import visualdl
+import visualdl.server.app 
+visualdl.server.app.run('/home/aistudio/log',
+                        host="127.0.0.1",
+                        port=8080,
+                        cache_timeout=20)
+3. 使用LogReader获取日志中的数据
+
+VisualDL的后端也提供了获取日志数据的组件LogReader，可通过其获取日志中任意数据，接口如下：
+
+class LogReader(file_path='')
+
+作业题 2-4
+将普通神经网络模型的每层输出打印，观察内容。
+将分类准确率的指标 用PLT库画图表示。
+通过分类准确率，判断以采用不同损失函数训练模型的效果优劣。
+作图比较：随着训练进行，模型在训练集和测试集上的Loss曲线。
+调节正则化权重，观察4的作图曲线的变化，并分析原因。2.9 手写数字识别之恢复训练
+在上一节中，我们已经介绍了将训练好的模型保存到磁盘文件的方法。应用程序可以随时加载模型，完成预测任务。但是在日常训练工作中我们会遇到一些突发情况，导致训练过程主动或被动的中断。如果训练一个模型需要花费几天的训练时间，中断后从初始状态重新训练是不可接受的。万幸的是，飞桨支持从上一次保存状态开始训练，只要我们随时保存训练过程中的模型状态，就不用从初始状态重新训练。
+
+2.9.1 构建并训练网络
+下面介绍恢复训练的实现方法，依然使用手写数字识别的案例，网络定义的部分保持不变，直接调用封装好的代码。
+
+In [1]
+import paddle
+import os
+from data_process import get_MNIST_dataloader
+from MNIST_network import MNIST
+import paddle.nn.functional as F
+
+train_loader, test_loader = get_MNIST_dataloader()
+定义训练Trainer，包含训练过程和模型保存
+
+In [2]
+class Trainer(object):
+    def __init__(self, model_path, model, optimizer):
+        self.model_path = model_path   # 模型存放路径 
+        self.model = model             # 定义的模型
+        self.optimizer = optimizer     # 优化器
+
+    def save(self):
+        # 保存模型
+        paddle.save(self.model.state_dict(), self.model_path)
+
+    def train_step(self, data):
+        images, labels = data
+        # 前向计算的过程
+        predicts = self.model(images)
+        # 计算损失
+        loss = F.cross_entropy(predicts, labels)
+        avg_loss = paddle.mean(loss)
+        # 后向传播，更新参数的过程
+        avg_loss.backward()
+        self.optimizer.step()
+        self.optimizer.clear_grad()
+        return avg_loss
+
+    def train_epoch(self, datasets, epoch):
+        self.model.train()
+        for batch_id, data in enumerate(datasets()):
+            loss = self.train_step(data)
+            # 每训练了1000批次的数据，打印下当前Loss的情况
+            if batch_id % 500 == 0:
+                print("epoch_id: {}, batch_id: {}, loss is: {}".format(epoch, batch_id, loss.numpy()))
+
+    def train(self, train_datasets, start_epoch, end_epoch, save_path):
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
+        for i in range(start_epoch, end_epoch):
+            self.train_epoch(train_datasets, i)
+
+            paddle.save(self.optimizer.state_dict(), './{}/mnist_epoch{}'.format(save_path,i)+'.pdopt')
+            paddle.save(self.model.state_dict(), './{}/mnist_epoch{}'.format(save_path,i)+'.pdparams')
+
+        self.save()
+在开始介绍使用飞桨恢复训练前，先正常训练一个模型，优化器使用Adam，使用动态变化的学习率，学习率从0.01衰减到0.001。每训练一轮后保存一次模型，之后将采用其中某一轮的模型参数进行恢复训练，验证一次性训练和中断再恢复训练的模型表现是否相差不多（训练loss的变化）。
+
+注意进行恢复训练的程序不仅要保存模型参数，还要保存优化器参数。这是因为某些优化器含有一些随着训练过程变换的参数，例如Adam、Adagrad等优化器采用可变学习率的策略，随着训练进行会逐渐减少学习率。这些优化器的参数对于恢复训练至关重要。
+
+为了演示这个特性，训练程序使用Adam优化器，PolynomialDecay的变化策略将学习率从0.01衰减到0.001。
+
+class paddle.optimizer.lr.PolynomialDecay (learningrate, decaysteps, endlr=0.0001, power=1.0, cycle=False, lastepoch=- 1, verbose=False)
+
+参数说明如下：
+
+learning_rate (float)：初始学习率，数据类型为Python float。
+decay_steps (int)：进行衰减的步长，这个决定了衰减周期。
+end_lr (float，可选）：最小的最终学习率，默认值为0.0001。
+power (float，可选)：多项式的幂，默认值为1.0。
+last_epoch (int，可选)：上一轮的轮数，重启训练时设置为上一轮的epoch数。默认值为-1，则为初始学习率。
+verbose (bool，可选)：如果是 True，则在每一轮更新时在标准输出stdout输出一条信息，默认值为False。
+cycle (bool，可选)：学习率下降后是否重新上升。若为True，则学习率衰减到最低学习率值时会重新上升。若为False，则学习率单调递减。默认值为False。
+PolynomialDecay的变化曲线下图所示：
+
+
+
+In [ ]
+#在使用GPU机器时，可以将use_gpu变量设置成True
+use_gpu = True
+paddle.set_device('gpu:0') if use_gpu else paddle.set_device('cpu')
+
+paddle.seed(1024)
+
+epochs = 3
+BATCH_SIZE = 32
+model_path = './mnist.pdparams'
+
+model = MNIST()
+
+total_steps = (int(50000//BATCH_SIZE) + 1) * epochs
+lr = paddle.optimizer.lr.PolynomialDecay(learning_rate=0.01, decay_steps=total_steps, end_lr=0.001)
+optimizer = paddle.optimizer.Adam(learning_rate=lr, parameters=model.parameters())
+
+trainer = Trainer(
+    model_path=model_path,
+    model=model,
+    optimizer=optimizer
+)
+
+trainer.train(train_datasets=train_loader, start_epoch = 0, end_epoch = epochs, save_path='checkpoint')
+W0901 17:29:43.145830   192 device_context.cc:447] Please NOTE: device: 0, GPU Compute Capability: 7.0, Driver API Version: 11.2, Runtime API Version: 10.1
+W0901 17:29:43.152843   192 device_context.cc:465] device: 0, cuDNN Version: 7.6.
+epoch_id: 0, batch_id: 0, loss is: [3.900196]
+epoch_id: 0, batch_id: 500, loss is: [0.1180672]
+epoch_id: 1, batch_id: 0, loss is: [0.05891193]
+epoch_id: 1, batch_id: 500, loss is: [0.16080402]
+epoch_id: 2, batch_id: 0, loss is: [0.05444674]
+epoch_id: 2, batch_id: 500, loss is: [0.02639692]
+2.9.2 恢复训练
+模型恢复训练，需要重新组网，所以我们需要重启AI Studio，运行数据处理和MNIST网络定义、Trainer部分代码，再执行模型恢复代码。
+
+在上述训练代码中，我们训练了3轮（epoch）。在每轮结束时，我们均保存了模型参数和优化器相关的参数。
+
+使用model.state_dict()获取模型参数。
+使用opt.state_dict获取优化器和学习率相关的参数。
+调用paddle.save将参数保存到本地。
+比如第一轮训练保存的文件是mnist_epoch0.pdparams，mnist_epoch0.pdopt，分别存储了模型参数和优化器参数。
+
+使用paddle.load分别加载模型参数和优化器参数，如下代码所示。
+
+paddle.load(params_path+'.pdparams')
+paddle.load(params_path+'.pdopt')
+如何判断模型是否准确的恢复训练呢？
+
+理想的恢复训练是模型状态回到训练中断的时刻，恢复训练之后的梯度更新走向是和恢复训练前的梯度走向完全相同的。基于此，我们可以通过恢复训练后的损失变化，判断上述方法是否能准确的恢复训练。即从epoch 0结束时保存的模型参数和优化器状态恢复训练，校验其后训练的损失变化（epoch 1）是否和不中断时的训练相差不多。
+
+说明：
+
+恢复训练有如下两个要点：
+
+保存模型时分别保存模型参数和优化器参数。
+恢复参数时分别恢复模型参数和优化器参数。
+下面的代码将展示恢复训练的过程，并验证恢复训练是否成功。加载模型参数并从第一个epoch开始训练，以便读者可以校验恢复训练后的损失变化。
+
+In [3]
+# MLP继续训练
+paddle.seed(1024)
+
+epochs = 3
+BATCH_SIZE = 32
+model_path = './mnist_retrain.pdparams'
+
+model = MNIST()
+# lr = 0.01
+total_steps = (int(50000//BATCH_SIZE) + 1) * epochs
+lr = paddle.optimizer.lr.PolynomialDecay(learning_rate=0.01, decay_steps=total_steps, end_lr=0.001)
+optimizer = paddle.optimizer.Adam(learning_rate=lr, parameters=model.parameters())
+
+params_dict = paddle.load('./checkpoint/mnist_epoch0.pdparams')
+opt_dict = paddle.load('./checkpoint/mnist_epoch0.pdopt')
+
+# 加载参数到模型
+model.set_state_dict(params_dict)
+optimizer.set_state_dict(opt_dict)
+
+trainer = Trainer(
+    model_path=model_path,
+    model=model,
+    optimizer=optimizer
+)
+# 前面训练模型都保存了，这里save_path设置为新路径，实际训练中保存在同一目录就可以
+trainer.train(train_datasets=train_loader,start_epoch = 1, end_epoch = epochs, save_path='checkpoint_con')
+W0901 17:31:41.696164   509 device_context.cc:447] Please NOTE: device: 0, GPU Compute Capability: 7.0, Driver API Version: 11.2, Runtime API Version: 10.1
+W0901 17:31:41.700848   509 device_context.cc:465] device: 0, cuDNN Version: 7.6.
+epoch_id: 1, batch_id: 0, loss is: [0.03602091]
+epoch_id: 1, batch_id: 500, loss is: [0.4263561]
+epoch_id: 2, batch_id: 0, loss is: [0.0733113]
+epoch_id: 2, batch_id: 500, loss is: [0.13029066]
+我们可以将模型参数和优化器参数分别保存，也可以同时保存，具体见下面的例子：
+
+In [4]
+import paddle
+from paddle import nn
+from paddle.optimizer import Adam
+
+layer = paddle.nn.Linear(3, 4)
+adam = Adam(learning_rate=0.001, parameters=layer.parameters())
+obj = {'model': layer.state_dict(), 'opt': adam.state_dict(), 'epoch': 100}
+path = 'example/model.pdparams'
+paddle.save(obj, path)
+从恢复训练的损失变化来看，加载模型参数继续训练的损失函数值和正常训练损失函数值是一致，可见使用飞桨实现恢复训练是极其简单的。 总结一下：
+
+保存模型时同时保存模型参数和优化器参数；
+paddle.save(opt.state_dict(), 'model.pdopt')
+paddle.save(model.state_dict(), 'model.pdparams')
+恢复参数时同时恢复模型参数和优化器参数。
+model_dict = paddle.load("model.pdparams")
+opt_dict = paddle.load("model.pdopt")
+
+model.set_state_dict(model_dict)
+opt.set_state_dict(opt_dict)2.10 动静转换
+动态图有诸多优点，比如易用的接口、Python风格的编程体验、友好的调试交互机制等。在动态图模式下，代码可以按照我们编写的顺序依次执行。这种机制更符合Python程序员的使用习惯，可以很方便地将脑海中的想法快速地转化为实际代码，也更容易调试。
+
+但在性能方面，由于Python执行开销较大，与C++有一定差距，因此在工业界的许多部署场景中（如大型推荐系统、移动端）都倾向于直接使用C++进行提速。相比动态图，静态图在部署方面更具有性能的优势。静态图程序在编译执行时，先搭建模型的神经网络结构，然后再对神经网络执行计算操作。预先搭建好的神经网络可以脱离Python依赖，在C++端被重新解析执行，而且拥有整体网络结构也能进行一些网络结构的优化。
+
+那么，有没有可能，深度学习框架实现一个新的模式，同时具备动态图高易用性与静态图高性能的特点呢？飞桨从2.0版本开始，新增新增支持动静转换功能，编程范式的选择更加灵活。用户依然使用动态图编写代码，只需添加一行装饰器 @paddle.jit.to_static，即可实现动态图转静态图模式运行，进行模型训练或者推理部署。在本章节中，将介绍飞桨动态图转静态图的基本用法和相关原理。
+
+2.10.1 动态图转静态图训练
+飞桨的动转静方式是基于源代码级别转换的ProgramTranslator实现，其原理是通过分析Python代码，将动态图代码转写为静态图代码，并在底层自动使用静态图执行器运行。其基本使用方法十分简便，只需要在要转化的函数（该函数也可以是用户自定义动态图Layer的forward函数）前添加一个装饰器 @paddle.jit.to_static。这种转换方式使得用户可以灵活使用Python语法及其控制流来构建神经网络模型。下面通过一个例子说明如何使用飞桨实现动态图转静态图训练。
+
+In [1]
+import paddle
+
+# 定义手写数字识别模型
+class MNIST(paddle.nn.Layer):
+    def __init__(self):
+        super(MNIST, self).__init__()
+        
+        # 定义一层全连接层，输出维度是1
+        self.fc = paddle.nn.Linear(in_features=784, out_features=10)
+
+    # 定义网络结构的前向计算过程
+    @paddle.jit.to_static  # 添加装饰器，使动态图网络结构在静态图模式下运行
+    def forward(self, inputs):
+        outputs = self.fc(inputs)
+        return outputs
+上述代码构建了仅有一层全连接层的手写字符识别网络。特别注意，在forward函数之前加了装饰器@paddle.jit.to_static，要求模型在静态图模式下运行。下面是模型的训练代码，由于飞桨实现动转静的功能是在内部完成的，对使用者来说，动态图的训练代码和动转静模型的训练代码是完全一致的。训练代码如下：
+
+In [2]
+import paddle
+import paddle.nn.functional as F
+# 确保从paddle.vision.datasets.MNIST中加载的图像数据是np.ndarray类型
+paddle.vision.set_image_backend('cv2')
+
+# 图像归一化函数，将数据范围为[0, 255]的图像归一化到[-1, 1]
+def norm_img(img):
+    batch_size = img.shape[0]
+    # 归一化图像数据
+    img = img/127.5 - 1
+    # 将图像形式reshape为[batch_size, 784]
+    img = paddle.reshape(img, [batch_size, 784])
+    
+    return img
+
+def train(model):
+    model.train()
+    # 加载训练集 batch_size 设为 16
+    train_loader = paddle.io.DataLoader(paddle.vision.datasets.MNIST(mode='train'), 
+                                        batch_size=16, 
+                                        shuffle=True)
+    opt = paddle.optimizer.SGD(learning_rate=0.001, parameters=model.parameters())
+    EPOCH_NUM = 10
+    for epoch in range(EPOCH_NUM):
+        for batch_id, data in enumerate(train_loader()):
+            images = norm_img(data[0]).astype('float32')
+            labels = data[1].astype('int64')
+            
+            #前向计算的过程
+            predicts = model(images)
+            
+            # 计算损失
+            loss = F.cross_entropy(predicts, labels)
+            avg_loss = paddle.mean(loss)
+            
+            #每训练了1000批次的数据，打印下当前Loss的情况
+            if batch_id % 1000 == 0:
+                print("epoch_id: {}, batch_id: {}, loss is: {}".format(epoch, batch_id, avg_loss.numpy()))
+            
+            #后向传播，更新参数的过程
+            avg_loss.backward()
+            opt.step()
+            opt.clear_grad()
+
+
+model = MNIST() 
+
+train(model)
+
+paddle.save(model.state_dict(), './mnist.pdparams')
+print("==>Trained model saved in ./mnist.pdparams")
+我们可以观察到，动转静的训练方式与动态图训练代码是完全相同的。因此，在动转静训练的时候，开发者只需要在动态图的组网前向计算函数上添加一个装饰器即可实现动转静训练。 在模型构建和训练中，飞桨更希望借用动态图的易用性优势，实际上，在加上@to_static装饰器运行的时候，飞桨内部是在静态图模式下执行OP的，但是展示给开发者的依然是动态图的使用方式。
+
+动转静更能体现静态图的方面在于模型部署上。下面将介绍动态图转静态图的部署方式。
+
+2.10.2 动态图转静态图模型保存
+在推理&部署场景中，需要同时保存推理模型的结构和参数，但是动态图是即时执行即时得到结果，并不会记录模型的结构信息。动态图在保存推理模型时，需要先将动态图模型转换为静态图写法，编译得到对应的模型结构再保存，而飞桨框架2.0版本推出paddle.jit.save和paddle.jit.load接口，无需重新实现静态图网络结构，直接实现动态图模型转成静态图模型格式。paddle.jit.save接口会自动调用飞桨框架2.0推出的动态图转静态图功能，使得用户可以做到使用动态图编程调试，自动转成静态图训练部署。
+
+这两个接口的基本关系如下图所示：
+
+
+
+
+
+图1：动转静模型保存接口
+
+
+当用户使用paddle.jit.save保存Layer对象时，飞桨会自动将用户编写的动态图Layer模型转换为静态图写法，并编译得到模型结构，同时将模型结构与参数保存。paddle.jit.save需要适配飞桨沿用已久的推理模型与参数格式，做到前向完全兼容，因此其保存格式与paddle.save有所区别，具体包括三种文件：保存模型结构的*.pdmodel文件；保存推理用参数的*.pdiparams文件和保存兼容变量信息的*.pdiparams.info文件，这几个文件后缀均为paddle.jit.save保存时默认使用的文件后缀。
+比如，如果保存上述手写字符识别的inference模型用于部署，可以直接用下面代码实现：
+
+In [3]
+# save inference model
+from paddle.static import InputSpec
+# 加载训练好的模型参数
+state_dict = paddle.load("./mnist.pdparams")
+# 将训练好的参数读取到网络中
+model.set_state_dict(state_dict)
+# 设置模型为评估模式
+model.eval()
+
+# 保存inference模型
+paddle.jit.save(
+    layer=model,
+    path="inference/mnist",
+    input_spec=[InputSpec(shape=[None, 784], dtype='float32')])
+
+print("==>Inference model saved in inference/mnist.")
+==>Inference model saved in inference/mnist.
+/opt/conda/envs/python35-paddle120-env/lib/python3.7/site-packages/paddle/fluid/dygraph/jit.py:434: UserWarning: The InputSpec(shape=(-1, 784), dtype=paddle.float32, name=None)'s name is None. When using jit.save, please set InputSepc's name in to_static(input_spec=[]) and jit.save(input_spec=[]) and make sure they are consistent.
+  warnings.warn(name_none_error % spec)
+其中，paddle.jit.save API 将输入的网络存储为 paddle.jit.TranslatedLayer 格式的模型，载入后可用于预测推理或者fine-tune训练。 该接口会将输入网络转写后的模型结构 Program 和所有必要的持久参数变量存储至输入路径 path 。
+
+path 是存储目标的前缀，存储的模型结构 Program 文件的后缀为 .pdmodel ，存储的持久参数变量文件的后缀为 .pdiparams ，同时这里也会将一些变量描述信息存储至文件，文件后缀为 .pdiparams.info。
+
+通过调用对应的paddle.jit.load接口，可以把存储的模型载入为 paddle.jit.TranslatedLayer格式，用于预测推理或者fine-tune训练。
+
+In [4]
+import numpy as np
+import paddle
+import paddle.nn.functional as F
+# 确保从paddle.vision.datasets.MNIST中加载的图像数据是np.ndarray类型
+paddle.vision.set_image_backend('cv2')
+
+# 读取mnist测试数据，获取第一个数据
+mnist_test = paddle.vision.datasets.MNIST(mode='test')
+test_image, label = mnist_test[0]
+# 获取读取到的图像的数字标签
+print("The label of readed image is : ", label)
+
+# 将测试图像数据转换为tensor，并reshape为[1, 784]
+test_image = paddle.reshape(paddle.to_tensor(test_image), [1, 784])
+# 然后执行图像归一化
+test_image = norm_img(test_image)
+# 加载保存的模型
+loaded_model = paddle.jit.load("./inference/mnist")
+# 利用加载的模型执行预测
+preds = loaded_model(test_image)
+pred_label = paddle.argmax(preds)
+# 打印预测结果
+print("The predicted label is : ", pred_label.numpy())
+paddle.jit.save API 可以把输入的网络结构和参数固化到一个文件中，所以通过加载保存的模型，可以不用重新构建网络结构而直接用于预测，易于模型部署。
+
+小结
+本章节中，介绍了飞桨动转静的功能和基本原理，并以一个例子介绍了如何将一个动态图模型转换到静态图模式下训练，并将训练好的模型转换成更易于部署的inference模型，有关更多动转静的功能介绍，可以参考官方文档。
+
+截止目前，诸位读者已经掌握了使用飞桨完成深度学习建模的方法，并且可以编写相当强大的模型。如果将每个模型部分均展开，整个模型实现有几百行代码，可以灵活的实现各种建模过程中的需求。
+
+
+
+“横纵式”教学法编写相当强大的模型
+
+
+本章内容覆盖了使用飞桨建模各方面的基础知识，但仅以手写数字识别为案例，还难以覆盖各个领域的建模经验。从下一章开始，我们正式进入本教程的下一部分：以推荐、计算机视觉和自然语言处理等多个领域的任务为例，讲述各行各业最常用的模型实现，并介绍更多使用飞桨的知识。
+
+作业 2-5
+正确运行模型的极简版代码，分析训练过程中可能出现的问题或值得优化的地方，通过以下几点优化：
+
+（1）样本：数据增强的方法
+
+（2）假设：改进网络模型
+
+（3）损失：尝试各种Loss
+
+（4）优化：尝试各种优化算法和学习率
+
+目标：尽可能使模型在mnist测试集上的分类准确率最高。（1）环境准备：注册并登录百度AI Studio平台，熟悉Notebook开发环境（基于百度飞桨PaddlePaddle框架）。
+（2）案例复现与课后作业练习。
+（3）代码理解。
+（4）扩展思考。MindSpore官网：https://www.mindspore.cn
+MindSpore实验案例：https://gitee.com/mindspore/course
+
+MNIST数据集：http://yann.lecun.com/exdb/mnist/ 
+http://yann.lecun.com/exdb/publis/pdf/lecun-98.pdf
+中文手写 https://link.zhihu.com/?target=https%3A//github.com/jinfagang/ocrcn_tf2.git1) 实验报告（包含截图：关键代码单元及输出结果）
+
+(2) 实验源码压缩包（导出.ipynb文件 或提供分享链接）评语：
+实验不光是做出结果，更重要是在有了结果之后的分析。
+这次实验不光考验了大家的编程和算法能力，还有调研能力、分析能力、表达能力、观察力、思辨力、好奇心等方面。
+ 
+报告格式：（正文用小四号宋体，1.5倍行距）
+
+1.实验目的与内容（描述基本要求和内容，研究背景与意义）
+
+2.算法概述、流程、功能模块
+
+准备数据
+配置网络
+定义网络
+定义损失函数
+定义优化算法
+训练网络
+模型评估
+模型预测
+3.实验方案（核心逻辑、关键代码，主要模块的算法说明：及实现该模块的思路）
+
+4.结果及性能分析（包括典型的界面、输入和输出数据、调参等）
+
+5. 总结（包括实验中遇到的问题，解决问题的过程及体会、实验收获、对程序开发的认识与思考，实验结论）
+
+6. 参考文献
+
+请按要求写一份实验报告 

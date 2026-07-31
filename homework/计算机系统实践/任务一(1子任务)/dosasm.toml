@@ -1,0 +1,28 @@
+[action]
+before = """
+mount c ${<built-in>/MASM-v6.11.jsdos}
+mount d ${actionFolder}
+PATH Z:\\;C:\\MASM
+d:
+cd d:\\
+"""
+
+open = """
+mount c ${<built-in>/MASM-v6.11.jsdos}
+mount d ${actionFolder}
+PATH Z:\\;C:\\MASM
+d:
+cd d:\\
+"""
+
+run = """
+MASM ${file};
+LINK ${filename}.OBJ;
+${filename}.EXE
+"""
+
+debug = """
+MASM /Zi ${file};
+LINK /CO ${filename}.OBJ;
+DEBUG ${filename}.EXE
+"""
